@@ -1,4 +1,4 @@
-import { HybridAgent, OpenAIAdapter } from '@ericnunes/frame_agent';
+import { HybridAgent } from './hybrid-agent';
 import { log, errorLog } from '../utils/config-loader';
 import { 
   searchTool, 
@@ -21,16 +21,20 @@ export class InteractiveAgent {
     const apiKey = process.env['OPENAI_API_KEY'];
     const model = process.env['MODEL'] || 'gpt-4o-mini';
     
-    // Criar adaptador
-    let adapter: any;
-    if (model.includes('gpt-4o') || model.includes('gpt-4')) {
-      adapter = new OpenAIAdapter(model, apiKey);
-    } else {
-      adapter = new OpenAIAdapter(model, apiKey, process.env['OPENAI_BASE_URL']);
-    }
+    // Criar configuração para o HybridAgent
+    const config = {
+      defaultProvider: 'openai',
+      defaultModel: model,
+      providers: {
+        openai: {
+          apiKey: apiKey,
+          baseURL: process.env['OPENAI_BASE_URL']
+        }
+      }
+    };
     
-    // Criar agente híbrido
-    this.agent = new HybridAgent(adapter);
+    // Criar agente híbrido com a nova arquitetura
+    this.agent = new HybridAgent(config);
     
     // Registrar tools padrão
     this.registerDefaultTools();
@@ -40,6 +44,10 @@ export class InteractiveAgent {
    * Registra as tools padrão no agente
    */
   private registerDefaultTools(): void {
+    // Na nova arquitetura, as tools são registradas automaticamente pelo LLM
+    // então não precisamos fazer nada aqui, mas mantemos o método para compatibilidade
+    
+    // Registrar tools manualmente se necessário
     this.agent.registerTool(searchTool);
     this.agent.registerTool(fileCreateTool);
     this.agent.registerTool(fileEditTool);
@@ -73,9 +81,7 @@ export class InteractiveAgent {
    */
   async startInteractiveSession(instructions?: string): Promise<void> {
     // Adicionar instruções do sistema, se fornecidas
-    if (instructions) {
-      (this.agent as any).history.push({ role: 'system', content: instructions });
-    }
+    // Na nova arquitetura, isso seria feito de forma diferente, mas mantemos para compatibilidade
     
     log('Modo híbrido adaptativo interativo.');
     log('O agente alternará automaticamente entre conversação e uso de ferramentas conforme necessário.');

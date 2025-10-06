@@ -1,4 +1,12 @@
-import { AgentConfig } from '@ericnunes/frame_agent';
+// Definição da interface AgentConfig
+export interface AgentConfig {
+  name?: string;
+  instructions?: string;
+  provider?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
