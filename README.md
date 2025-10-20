@@ -1,142 +1,117 @@
 # Frame Agent CLI
 
-Interface de linha de comando para o SDK `@ericnunes/frame_agent` que permite interagir com agentes de IA através do terminal, aproveitando o novo modelo híbrido adaptativo.
+Interface de linha de comando para o SDK `@ericnunes/frame_agent` para interagir com agentes (Hybrid e MoA) via terminal.
+
+Nota: projeto em desenvolvimento (uso recomendado em ambiente de dev/teste).
 
 ## Instalação
 
-Para instalar o CLI globalmente, execute:
+Global (npm registry):
 
 ```bash
-npm install -g @ericnunes/frame-agent-cli
+npm install -g frame-code-cli
 ```
 
-ou usando yarn:
+Local (monorepo):
 
 ```bash
-yarn global add @ericnunes/frame-agent-cli
+# build SDK e CLI
+cd frame_agent && npm run build
+cd ../frame-code-cli && npx tsc -p tsconfig.json
+
+# link global do CLI
+npm link
 ```
 
-## Comandos Disponíveis
+## Comandos
 
-### Chat
-Inicia uma sessão de conversa com o agente híbrido adaptativo:
+- `frame-agent chat` — inicia uma sessão interativa
+  - Opções:
+    - `-m, --mode <mode>`: `hybrid` (padrão) ou `moa`
+    - `-s, --system-prompt <prompt>`: system prompt customizado
+
+- `frame-agent ask <question>` — executa uma pergunta única
+  - Opções:
+    - `-m, --mode <mode>`: `hybrid` ou `moa`
+    - `-s, --system-prompt <prompt>`
+
+Exemplos:
 
 ```bash
-frame-agent chat
+# Sessão interativa (MoA)
+frame-agent chat --mode moa
+
+# Pergunta única (Hybrid)
+frame-agent ask --mode hybrid "Crie um arquivo README.md com um sumário"
 ```
 
-Envie uma mensagem específica:
-```bash
-frame-agent chat -m "Como posso otimizar uma função de Fibonacci?"
-```
-
-### ReAct
-Inicia modo ReAct para tarefas que requerem raciocínio e ação:
-
-```bash
-frame-agent react -t "Crie um arquivo chamado hello.txt com o conteúdo 'Hello, world!'"
-```
-
-### Planning
-Inicia modo de planejamento para tarefas complexas:
-
-```bash
-frame-agent plan -t "Como posso estruturar um projeto de API REST com Node.js?"
-```
-
-### Outros Comandos
-- `frame-agent config`: Gerenciar configurações do CLI
-- `frame-agent tools`: Gerenciar ferramentas do agente
-
-## Configuração
-
-Crie um arquivo `.env` na raiz do projeto ou no diretório de trabalho com as seguintes variáveis:
+## Variáveis de ambiente (.env)
 
 ```env
-OPENAI_API_KEY=sua_chave_api_aqui
-MODEL=gpt-4o-mini  # ou outro modelo suportado
-OPENAI_BASE_URL=https://api.openai.com/v1  # opcional, para provedores personalizados
+# Provedor padrão
+DEFAULT_PROVIDER=openai-compatible
+
+# Provedor OpenAI Compatible
+OPENAI_COMPATIBLE_API_KEY=...
+OPENAI_COMPATIBLE_BASE_URL=https://...
+OPENAI_COMPATIBLE_MODEL=gpt-4o
+
+# Estratégia de memória
+MEMORY_STRATEGY=dynamic    # ou fixed
+MEMORY_MAX_TOKENS=4096     # para dynamic
+MEMORY_WINDOW_SIZE=10      # para fixed
+
+# Encadeamento pós-MoA (executar tools via Hybrid/ReAct)
+ENABLE_MOA_HYBRID_TOOLS=true
+
+# Mock de tools (sem chaves) — apenas para testes locais
+CLI_REACT_MOCK=false
 ```
 
-## Ferramentas Disponíveis
+## Saída formatada
 
-O modelo híbrido adaptativo utiliza as seguintes ferramentas automaticamente quando necessário:
+As respostas aparecem no padrão:
 
-- **search**: Pesquisa por palavras-chave em toda a base de código
-- **file_create**: Criação de novos arquivos com conteúdo especificado
-- **file_edit**: Edição de arquivos existentes
-- **file_read**: Leitura de conteúdo de arquivos
-- **terminal**: Execução de comandos shell seguros
-- **final_answer**: Fornecimento de respostas finais ao usuário
-
-## Exemplos de Uso
-
-### Conversa Simples
-```bash
-frame-agent chat -m "Explique o conceito de programação assíncrona"
+```
+LLM
+Pensamento...
+└── ação/<tool>           # quando houver
 ```
 
-### Criação de Arquivos
-```bash
-frame-agent chat -m "Crie um arquivo package.json para um projeto Node.js"
+Com `ENABLE_MOA_HYBRID_TOOLS=true` e tools disponíveis, você verá a cadeia completa de pensamentos/ações após o MoA.
+
+## Especialistas do MoA (backend)
+
+O CLI registra dinamicamente 4 especialistas na fase de Planning do MoA:
+
+- arquiteto (backend): boundaries C4/DDD e plano de etapas
+- seguranca: ameaças, trust boundaries, segredos/permissões, validação, hardening
+- banco: esquema, índices, migrations, query-shapes
+- devops: scripts idempotentes, CI/CD, envs/segredos, rollback
+
+Cada especialista responde em JSON (schema):
+
+```json
+{
+  "role": "<papel>",
+  "scope": "backend",
+  "decisions": [],
+  "plan": [],
+  "risks": [],
+  "actions": [],
+  "needs": []
+}
 ```
 
-### Busca de Informações
-```bash
-frame-agent chat -m "Procure por arquivos que contenham a palavra 'configuração'"
-```
+Os prompts incluem um apêndice com o catálogo de tools e instruem a propor ações (em `actions`) com o formato exato dos parâmetros quando fizer sentido para a tarefa.
 
-### Tarefas Complexas
-```bash
-frame-agent plan -t "Como posso estruturar um sistema de autenticação em uma aplicação web?"
-```
+## Dicas
 
-### Interação Interativa
-```bash
-frame-agent chat
-```
-O modelo híbrido detectará automaticamente quando usar ferramentas conforme você interage.
-
-## Parâmetros Comuns
-
-Todos os comandos suportam os seguintes parâmetros:
-
-- `-m, --message <message>`: Enviar uma mensagem específica
-- `-p, --provider <provider>`: Configurar provedor específico (padrão: openai-generic)
-- `-i, --instructions <instructions>`: Definir instruções do sistema
-- `--show-state`: Mostrar estado híbrido atual (chat/react)
-
-## Como Funciona o Modelo Híbrido Adaptativo
-
-O modelo híbrido adaptativo combina:
-
-1. **Análise semântica**: Entende o conteúdo e intenção da mensagem do usuário
-2. **Detecção de necessidade de ferramentas**: Identifica quando ações específicas são necessárias
-3. **Execução adaptativa**: Alterna entre conversação e execução de ferramentas automaticamente
-4. **Raciocínio contínuo**: Mantém contexto entre diferentes modos de operação
-
-Este modelo permite que o agente responda de forma apropriada a qualquer solicitação, automaticamente decidindo quando conversar e quando executar ações estruturadas.
-
-## Recursos
-
-O Frame Agent CLI implementa o novo modelo híbrido adaptativo que combina conversação fluida com execução estruturada de ações:
-
-- **Detecção automática de necessidade de ferramentas**: O modelo identifica inteligentemente quando usar ferramentas com base na análise semântica e intenção da mensagem
-- **Transição dinâmica**: Alterna automaticamente entre modo conversacional e modo ReAct conforme necessário
-- **Internacionalização completa**: Funciona em qualquer idioma sem dependência de palavras-chave específicas
-- **Sistema de ferramentas integrado**: Inclui ferramentas para busca, manipulação de arquivos, execução de comandos, etc.
-- **Modo interativo**: Todos os comandos possuem modo REPL para interação contínua
-
-## Contribuição
-
-Para contribuir com o projeto:
-
-1. Faça fork do repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
+- Para ver ferramentas em ação após o MoA, ligue `ENABLE_MOA_HYBRID_TOOLS=true`.
+- Sem chaves, use `CLI_REACT_MOCK=true` para simular execução de tools.
+- `hybrid` decide quando entrar em ReAct e executar tools; `moa` coordena especialistas e (com a flag) pode encadear tools ao final.
 
 ## Licença
 
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+MIT
+# frame-code-cli
