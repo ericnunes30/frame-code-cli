@@ -1,38 +1,48 @@
-import { Command } from 'commander';
-import { log } from '../utils/config-loader';
+import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, TodoListTool } from 'frame-agent-sdk';
+import {
+  searchTool,
+  fileCreateTool,
+  fileEditTool,
+  fileReadTool,
+  terminalTool,
+} from '../tools';
+import { registerMcpTools } from '../mcp/register';
+import { logger } from './logger';
 
-export const toolsCommand = new Command('tools')
-  .description('Gerenciar tools do agente')
-  .action(() => {
-    log('Comandos de tools disponíveis');
-    // Implementação será adicionada posteriormente
-  });
+// Flag para controlar se as ferramentas já foram inicializadas
+let toolsInitialized = false;
 
-// Subcomando para registrar uma tool
-toolsCommand
-  .command('register')
-  .description('Registrar uma tool')
-  .option('-f, --file <file>', 'Arquivo da tool')
-  .action((options) => {
-    log('Registrando tool:', options.file);
-    // Implementação será adicionada posteriormente
-  });
+/**
+ * Inicializa todas as ferramentas (síncronas e assíncronas)
+ * Deve ser chamado antes de usar o toolRegistry
+ */
+export async function initializeTools(): Promise<void> {
+  if (toolsInitialized) {
+    return;
+  }
 
-// Subcomando para listar tools
-toolsCommand
-  .command('list')
-  .description('Listar tools registradas')
-  .action(() => {
-    log('Listando tools registradas...');
-    // Implementação será adicionada posteriormente
-  });
+  // Registrar as ferramentas padrão do CLI no registry global
+  toolRegistry.register(searchTool);
+  toolRegistry.register(fileCreateTool);
+  toolRegistry.register(fileEditTool);
+  toolRegistry.register(fileReadTool);
+  toolRegistry.register(terminalTool);
 
-// Subcomando para remover tool
-toolsCommand
-  .command('unregister')
-  .description('Remover tool')
-  .option('-n, --name <name>', 'Nome da tool')
-  .action((options) => {
-    log('Removendo tool:', options.name);
-    // Implementação será adicionada posteriormente
-  });
+  // Registrar ferramentas nativas do SDK usadas pelo modo react
+  try { toolRegistry.register(new AskUserTool()); } catch { }
+  try { toolRegistry.register(new FinalAnswerTool()); } catch { }
+  try { toolRegistry.register(new ApprovalTool()); } catch { }
+  try { toolRegistry.register(new TodoListTool()); } catch { }
+
+  // Registrar ferramentas MCP (aguardar conclusão)
+  try {
+    await registerMcpTools();
+  } catch (err) {
+    logger.error('Erro ao registrar MCP tools:', err);
+  }
+
+  toolsInitialized = true;
+}
+
+// Exportar o registry para uso em outros módulos
+export { toolRegistry };

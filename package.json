@@ -1,26 +1,28 @@
 {
-  "name": "@ericnunes/frame-agent-cli",
-  "version": "1.1.18",
-  "description": "CLI para interagir com agentes de IA usando o SDK @ericnunes/frame_agent",
+  "name": "frame-code-cli",
+  "version": "0.0.1",
+  "description": "CLI para interagir com agentes de IA usando o frame-agent-sdk",
   "main": "dist/index.js",
   "bin": {
-    "frame-agent": "dist/index.js"
+    "frame-code": "dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ericnunes/frame_agent_cli.git"
+    "url": "git+https://github.com/ericnunes/frame-code-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/ericnunes/frame_agent_cli/issues"
+    "url": "https://github.com/ericnunes/frame-code-cli/issues"
   },
-  "homepage": "https://github.com/ericnunes/frame_agent_cli#readme",
+  "homepage": "https://github.com/ericnunes/frame-code-cli#readme",
   "scripts": {
-    "build": "tsc && cp src/system_prompt.md dist/",
-    "dev": "npx ts-node-dev --respawn -r tsconfig-paths/register src/index.ts",
-    "dev:watch": "npx ts-node-dev --respawn -r tsconfig-paths/register src/index.ts",
+    "build": "tsc && npm run copy:prompts",
+    "copy:prompts": "xcopy /E /I /Y src\\\\prompts dist\\\\prompts || cp -r src/prompts dist/prompts",
+    "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "test": "jest",
-    "test:watch": "jest --watch"
+    "log:view": "tail -f server.log",
+    "log:clear": "rm -f server.log",
+    "log:stats": "ls -la server.log",
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "cli",
@@ -31,23 +33,19 @@
   "author": "Eric Nunes",
   "license": "MIT",
   "dependencies": {
-    "@ericnunes/frame_agent": "^1.2.6",
     "chalk": "^5.6.2",
     "commander": "^14.0.1",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
+    "dotenv": "^17.2.3",
+    "frame-agent-sdk": "file:../frame-agent-sdk",
     "glob": "^11.0.3",
     "inquirer": "^12.9.6",
+    "openai": "^6.2.0",
     "ora": "^9.0.0",
-    "pg": "^8.16.3",
     "valibot": "^1.1.0"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.7.0",
-    "jest": "^30.1.3",
-    "ts-jest": "^29.4.4",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
@@ -58,8 +56,7 @@
   },
   "directories": {
     "doc": "docs",
-    "example": "examples",
-    "test": "tests"
+    "example": "examples"
   },
   "types": "./dist/index.d.ts"
 }
