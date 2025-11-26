@@ -2,8 +2,18 @@ import { ToolBase, IToolParams } from 'frame-agent-sdk';
 import * as fs from 'fs';
 import { logger } from '../core/logger';
 const SHOW_TOOL_LOGS_INLINE = (process.env.SHOW_TOOL_LOGS_INLINE || '').toLowerCase() === 'true';
-const toolLog = (...args: any[]) => { if (SHOW_TOOL_LOGS_INLINE) logger.info(...args); };
-const errorLog = (...args: any[]) => { if (SHOW_TOOL_LOGS_INLINE) logger.error(...args); };
+const toolLog = (...args: any[]) => {
+  if (SHOW_TOOL_LOGS_INLINE) {
+    const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+    logger.info(message);
+  }
+};
+const errorLog = (...args: any[]) => {
+  if (SHOW_TOOL_LOGS_INLINE) {
+    const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+    logger.error(message);
+  }
+};
 
 const TOOL_ID = '[file_edit]';
 
