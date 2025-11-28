@@ -27,3 +27,6 @@ Thumbs.db
 
 # BAML
 baml_client/
+
+backup/
+mcp_server/
