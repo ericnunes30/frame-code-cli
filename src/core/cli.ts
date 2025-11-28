@@ -13,6 +13,7 @@ const printLine = (message: string = '') => {
   process.stdout.write(message + '\n');
 };
 
+
 // Flag para controlar se os agentes já foram registrados
 let agentsRegistered = false;
 
@@ -77,14 +78,8 @@ program
 
       const result = await graph.execute(initialState);
 
-      // Mostrar resposta
-      const lastMsg = result.state.messages[result.state.messages.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant') {
-        printLine('');
-        printLine('🤖 Agente:');
-        printLine(`   ${lastMsg.content} `);
-        printLine('');
-      }
+      // A formatação das mensagens já é feita pelo toolDetectionWrapper
+      // Aqui só precisamos mostrar mensagens de status
 
       if (result.status === GraphStatus.FINISHED) {
         printLine('✅ Tarefa concluída!');
@@ -198,21 +193,8 @@ program
             return; // Aguardar próximo input do usuário
           }
 
-          // Mostrar resposta final
-          logger.debug(`Verificando resposta final...`);
-          logger.debug(`Total de mensagens: ${currentState.messages?.length || 0}`);
-
-          const lastMsg = currentState.messages[currentState.messages.length - 1];
-          logger.debug(`Última mensagem: ${JSON.stringify(lastMsg)}`);
-
-          if (lastMsg && lastMsg.role === 'assistant') {
-            printLine('');
-            printLine('🤖 Agente:');
-            printLine(`   ${lastMsg.content} `);
-            printLine('');
-          } else {
-            logger.debug(`Nenhuma mensagem do assistant encontrada ou formato incorreto`);
-          }
+          // A formatação das mensagens já é feita pelo toolDetectionWrapper
+          // Aqui só precisamos mostrar logs de debug
 
           // Verificar se finalizou
           if (result.status === GraphStatus.FINISHED) {

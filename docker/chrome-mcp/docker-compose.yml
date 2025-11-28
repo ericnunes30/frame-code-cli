@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # Google Chrome Stable + MCP Server
+  # ========================================
+  chrome-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CHROME_VERSION: stable  # ou 'beta', 'unstable'
+    
+    container_name: chrome-devtools-mcp-server
+    
+    # Portas expostas
+    ports:
+      - "9222:9222"  # Chrome Remote Debugging (CDP)
+      - "8000:8000"  # MCP Server HTTP
+    
+    # Variáveis de ambiente
+    environment:
+      - CHROME_DEBUG_PORT=9222
+      - MCP_SERVER_PORT=8000
+      - DEBUG=true
+      - NODE_ENV=development
+    
+    # Volumes para persistência
+    volumes:
+      # Artefatos de teste (screenshots, traces)
+      - ./artifacts:/app/artifacts
+      # Opcional: Scripts customizados
+      # - ./scripts:/app/scripts:ro
+    
+    # Configurações de segurança para Chrome
+    security_opt:
+      - seccomp:unconfined
+    
+    # Capacidades necessárias para sandbox do Chrome
+    cap_add:
+      - SYS_ADMIN
+    
+    # Aumentar shared memory (previne crashes)
+    shm_size: 2gb
+    
+    # Rede isolada
+    networks:
+      - mcp-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9222/json/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    
+    # Política de restart
+    restart: unless-stopped
+    
+    # Comando (http ou stdio)
+    command: ["http"]
+
+# ========================================
+# Redes
+# ========================================
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ========================================
+# Volumes
+# ========================================
+volumes:
+  chrome-artifacts:
+    driver: local

@@ -6,7 +6,7 @@ import {
   fileReadTool,
   terminalTool,
 } from '../tools';
-import { registerMcpTools } from '../mcp/register';
+import { registerMcpTools } from '../tools/mcp/register';
 import { logger } from './logger';
 
 // Flag para controlar se as ferramentas já foram inicializadas

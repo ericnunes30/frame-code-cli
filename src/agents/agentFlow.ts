@@ -2,11 +2,12 @@ import {
     GraphEngine,
     GraphDefinition,
     createAgentNode,
-    createToolDetectionNode,
     createToolExecutorNode,
     AgentLLMConfig,
-    AgentMode
+    AgentMode,
+    PromptBuilder
 } from 'frame-agent-sdk';
+import { createToolDetectionWrapper } from '../core/toolDetectionWrapper';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../core/logger';
@@ -17,13 +18,28 @@ export async function createAgentGraph(modelName?: string) {
     // Carregar configuração
     const config = await loadConfig();
 
-    // Carregar prompt do sistema
-    const promptPath = path.join(__dirname, '../prompts/system-prompt-generator.md');
+    // Carregar prompt do sistema usando PromptBuilder (com logs de debug)
     let systemPrompt = '';
     try {
-        systemPrompt = fs.readFileSync(promptPath, 'utf-8');
+        // Tentar ler arquivo markdown como fallback
+        const promptPath = path.join(__dirname, '../prompts/system-prompt-generator.md');
+        const fallbackPrompt = fs.readFileSync(promptPath, 'utf-8');
+
+        // Usar PromptBuilder para gerar prompt com logs de debug
+        systemPrompt = PromptBuilder.buildSystemPrompt({
+            mode: 'react' as any,
+            agentInfo: {
+                name: 'GeneratorAgent',
+                goal: 'Executar tarefas de codificação e responder perguntas',
+                backstory: 'Você é um desenvolvedor júnior focado em programação.'
+            },
+            additionalInstructions: fallbackPrompt,
+            tools: toolRegistry.listTools()
+        });
+
+        logger.info('[DEBUG] System prompt gerado via PromptBuilder com logs habilitados');
     } catch (error) {
-        logger.error(`Erro ao ler prompt do sistema em ${promptPath}:`, error);
+        logger.error(`Erro ao gerar prompt do sistema:`, error);
         systemPrompt = 'Você é um assistente útil.';
     }
 
@@ -61,8 +77,8 @@ export async function createAgentGraph(modelName?: string) {
         maxTokens: config.defaults?.maxTokens, // Para output por call ao LLM
     });
 
-    // 2. Nó de Detecção de Tools
-    const toolDetectionNode = createToolDetectionNode();
+    // 2. Nó de Detecção de Tools (com wrapper para formatação)
+    const toolDetectionNode = createToolDetectionWrapper();
 
     // 3. Nó de Execução de Tools
     const toolExecutorNode = createToolExecutorNode();
