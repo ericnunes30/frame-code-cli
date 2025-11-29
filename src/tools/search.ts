@@ -227,6 +227,7 @@ class AdvancedSearchTool extends ToolBase<SearchParams, SearchResponse> {
         cwd: absoluteDirectory,
         ignore: ignorePatterns,
         nodir: true,
+        absolute: true
       });
       
       // Logs detalhados para diagnóstico
@@ -260,14 +261,12 @@ class AdvancedSearchTool extends ToolBase<SearchParams, SearchResponse> {
         }
    
         filesScanned++;
-        // Construir o caminho completo do arquivo
-        const fullPath = path.join(absoluteDirectory, file);
         const fileName = path.basename(file);
         let fileMatches: string[] = [];
         let matchCount = 0;
   
         try {
-          toolLog(`Processando arquivo: ${file} (caminho completo: ${fullPath})`);
+          toolLog(`Processando arquivo: ${file}`);
           
           // Usar as variáveis pré-definidas para determinar quais buscas realizar
           if (shouldSearchFilename && this.searchInFilename(fileName, searchRegex)) {
@@ -277,16 +276,16 @@ class AdvancedSearchTool extends ToolBase<SearchParams, SearchResponse> {
           }
 
           if (shouldSearchContent) {
-            const content = await fs.promises.readFile(fullPath, 'utf-8');
-            toolLog(`Lendo conteúdo de ${fullPath}, tamanho: ${content.length} caracteres`);
+            const content = await fs.promises.readFile(file, 'utf-8');
+            toolLog(`Lendo conteúdo de ${file}, tamanho: ${content.length} caracteres`);
             const contentMatches = this.searchInContent(content, searchRegex, searchMode);
             
             if (contentMatches.length > 0) {
               fileMatches.push(...contentMatches);
               matchCount += contentMatches.length;
-              toolLog(`Encontrados ${contentMatches.length} matches no conteúdo de ${fullPath}`);
+              toolLog(`Encontrados ${contentMatches.length} matches no conteúdo de ${file}`);
             } else {
-              toolLog(`Nenhum match encontrado no conteúdo de ${fullPath}`);
+              toolLog(`Nenhum match encontrado no conteúdo de ${file}`);
             }
           }
 
@@ -302,7 +301,7 @@ class AdvancedSearchTool extends ToolBase<SearchParams, SearchResponse> {
             toolLog(`Arquivo ${file} não teve matches`);
           }
         } catch (error) {
-          errorLog(`Erro ao processar arquivo ${file} (caminho completo: ${fullPath}):`, error);
+          errorLog(`Erro ao processar arquivo ${file}:`, error);
         }
       }
 

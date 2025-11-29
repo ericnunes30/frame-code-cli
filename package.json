@@ -34,9 +34,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
-    "@types/blessed": "^0.1.26",
     "@typescript-eslint/typescript-estree": "^8.48.0",
-    "blessed": "^0.1.81",
     "chalk": "^5.6.2",
     "commander": "^14.0.1",
     "dotenv": "^17.2.3",

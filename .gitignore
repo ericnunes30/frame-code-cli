@@ -1,7 +1,7 @@
 # Dependências
 node_modules/
 
-docker/*
+docker/
 
 # Arquivos compilados
 dist/
@@ -35,20 +35,19 @@ backup/
 mcp_server/
 
 # GitHub Actions Self-hosted Runners
-actions-runner/
+.actions-runner/
 _runner/
-.runner
 .credentials
 .credentials_rsaparams
 actions-runner-win-x64-*.zip
 config.cmd
-run-helper.cmd
 run-helper.cmd.template
 run-helper.sh.template
 run.cmd
-capture-logs.sh
 externals/
-bin/
 
 # Arquivos de diagnóstico e logs do runner
 _diag/
+.runner
+run-helper.cmd
+bin
