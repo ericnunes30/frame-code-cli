@@ -14,7 +14,7 @@ export function formatToolCallForTerminal(toolCall: IToolCall): void {
     console.log('');
     return;
   }
-  
+
   // Para ask_user, exibimos como pergunta
   if (toolCall.toolName === 'ask_user') {
     const question = (toolCall.params as any)?.question || 'Pergunta não especificada';
@@ -24,7 +24,7 @@ export function formatToolCallForTerminal(toolCall: IToolCall): void {
     console.log('');
     return;
   }
-  
+
   // Para outras ferramentas, exibimos o pensamento e a ação
   console.log('');
   console.log('🤖 Agente:');

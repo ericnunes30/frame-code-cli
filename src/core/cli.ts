@@ -65,7 +65,7 @@ program
       printLine('Agente pronto!');
       printLine('');
 
-      printLine('🤖 Processando...');
+      printLine('\n' + '🤖 Processando...');
       printLine(`Pergunta: "${question}"`);
       printLine('');
 
@@ -151,7 +151,7 @@ program
             mensagensAposAdicionar: currentState.messages?.map((m: any, i: number) => `${i}: [${m.role}] ${m.content.substring(0, 50)}...`) || []
           })}`);
 
-          printLine('🤖 Processando...');
+          printLine('\n' + '🤖 Processando...');
 
           // Executar grafo
           logger.debug(`Executando grafo - Estado inicial: ${JSON.stringify({
