@@ -1,7 +1,12 @@
 import { ToolBase, IToolParams } from 'frame-agent-sdk';
 import * as fs from 'fs';
-import * as fastDiff from 'fast-diff';
+import fastDiff from 'fast-diff';
 import { logger } from '../core/logger';
+
+// Constantes para os tipos de operação do fast-diff
+const DIFF_EQUAL = 0;
+const DIFF_DELETE = -1;
+const DIFF_INSERT = 1;
 
 const SHOW_TOOL_LOGS_INLINE = (process.env.SHOW_TOOL_LOGS_INLINE || '').toLowerCase() === 'true';
 
@@ -83,13 +88,25 @@ export const applySearchReplaceTool = new class extends ToolBase<ApplySearchRepl
           continue;
         }
 
-        const beforeLength = currentContent.length;
+        const beforeContent = currentContent;
         currentContent = currentContent.replace(edit.search, edit.replace);
-        const afterLength = currentContent.length;
 
-        if (beforeLength !== afterLength) {
+        // Usa fast-diff para calcular e mostrar as diferenças
+        const diff = fastDiff(beforeContent, currentContent);
+        let hasChanges = false;
+
+        for (const [operation, text] of diff) {
+          if (operation !== DIFF_EQUAL) {
+            hasChanges = true;
+            const opSymbol = operation === DIFF_INSERT ? '+' : '-';
+            const preview = text.substring(0, 50).replace(/\n/g, '\\n');
+            toolLog(`${TOOL_ID}   ${opSymbol} ${preview}${text.length > 50 ? '...' : ''}`);
+          }
+        }
+
+        if (hasChanges) {
           changesApplied++;
-          toolLog(`${TOOL_ID} → Substituição aplicada: ${edit.search.substring(0, 30)}... → ${edit.replace.substring(0, 30)}...`);
+          toolLog(`${TOOL_ID} → Substituição aplicada com sucesso`);
         }
       }
 
@@ -103,12 +120,28 @@ export const applySearchReplaceTool = new class extends ToolBase<ApplySearchRepl
         };
       }
 
+      // Mostra um resumo final das diferenças usando fast-diff
+      const finalDiff = fastDiff(originalContent, currentContent);
+      let addedLines = 0;
+      let removedLines = 0;
+
+      for (const [operation, text] of finalDiff) {
+        if (operation === DIFF_INSERT) {
+          addedLines += text.split('\n').length - 1;
+        } else if (operation === DIFF_DELETE) {
+          removedLines += text.split('\n').length - 1;
+        }
+      }
+
       fs.writeFileSync(params.filePath, currentContent);
 
       toolLog(`${TOOL_ID} ✓ ${changesApplied} substituição(ões) aplicada(s)`);
+      toolLog(`${TOOL_ID} → Linhas adicionadas: ${addedLines}`);
+      toolLog(`${TOOL_ID} → Linhas removidas: ${removedLines}`);
+
       return {
         success: true,
-        message: `✓ ${changesApplied} substituição(ões) aplicada(s) em: ${params.filePath}`,
+        message: `✓ ${changesApplied} substituição(ões) aplicada(s) em: ${params.filePath} (+${addedLines}/-${removedLines} linhas)`,
         changesApplied
       };
     } catch (error: any) {
