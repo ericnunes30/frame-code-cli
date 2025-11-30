@@ -15,7 +15,7 @@ package-lock.json
 # Logs
 *.log
 logs.md
-
+package-lock.json
 # Arquivos temporários
 tmp/
 temp/
@@ -30,6 +30,8 @@ Thumbs.db
 
 # BAML
 baml_client/
+
+package-lock.json
 
 backup/
 mcp_server/
