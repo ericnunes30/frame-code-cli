@@ -2,7 +2,7 @@ import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, TodoListTool 
 import {
   searchTool,
   fileCreateTool,
-  fileEditTool,
+  applySearchReplaceTool,
   fileReadTool,
   terminalTool,
 } from '../tools';
@@ -24,7 +24,7 @@ export async function initializeTools(): Promise<void> {
   // Registrar as ferramentas padrão do CLI no registry global
   toolRegistry.register(searchTool);
   toolRegistry.register(fileCreateTool);
-  toolRegistry.register(fileEditTool);
+  toolRegistry.register(applySearchReplaceTool);
   toolRegistry.register(fileReadTool);
   toolRegistry.register(terminalTool);
 

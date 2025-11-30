@@ -5,6 +5,7 @@ docker/
 
 # Arquivos compilados
 dist/
+package-lock.json
 
 # Arquivos de ambiente
 .env
@@ -14,7 +15,7 @@ dist/
 # Logs
 *.log
 logs.md
-
+package-lock.json
 # Arquivos temporários
 tmp/
 temp/
@@ -30,5 +31,27 @@ Thumbs.db
 # BAML
 baml_client/
 
+package-lock.json
+
 backup/
 mcp_server/
+
+# GitHub Actions Self-hosted Runners
+.actions-runner/
+_runner/
+.credentials
+.credentials_rsaparams
+actions-runner-win-x64-*.zip
+config.cmd
+run-helper.cmd.template
+run-helper.sh.template
+run.cmd
+externals/
+
+# Arquivos de diagnóstico e logs do runner
+_diag/
+.runner
+run-helper.cmd
+bin
+
+package-lock.json
