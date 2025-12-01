@@ -3,6 +3,7 @@ import {
     GraphDefinition,
     createAgentNode,
     createToolExecutorNode,
+    createReactValidationNode,
     AgentLLMConfig,
     AgentMode,
     PromptBuilder
@@ -77,10 +78,13 @@ export async function createAgentGraph(modelName?: string) {
         maxTokens: config.defaults?.maxTokens, // Para output por call ao LLM
     });
 
-    // 2. Nó de Detecção de Tools (com wrapper para formatação)
+    // 2. Nó de Validação ReAct
+    const reactValidationNode = createReactValidationNode();
+
+    // 3. Nó de Detecção de Tools (com wrapper para formatação)
     const toolDetectionNode = createToolDetectionWrapper();
 
-    // 3. Nó de Execução de Tools
+    // 4. Nó de Execução de Tools
     const toolExecutorNode = createToolExecutorNode();
 
     // Definição do Grafo
@@ -89,6 +93,7 @@ export async function createAgentGraph(modelName?: string) {
         endNodeName: 'end',
         nodes: {
             agent: agentNode,
+            validate: reactValidationNode,
             detect: toolDetectionNode,
             execute: toolExecutorNode,
             end: async (state, engine) => {
@@ -101,7 +106,18 @@ export async function createAgentGraph(modelName?: string) {
             }
         },
         edges: {
-            agent: 'detect',
+            agent: 'validate',
+            validate: (state) => {
+                // Verificar se a validação ReAct passou
+                const validationPassed = (state.metadata as any)?.validation?.passed !== false;
+                
+                if (validationPassed) {
+                    return 'detect';
+                } else {
+                    // Se a validação falhou, voltar para o agente com feedback
+                    return 'agent';
+                }
+            },
             detect: (state) => {
                 logger.info(`[DEBUG] Detect node - Estado atual: ${JSON.stringify({
                     hasToolCall: !!state.lastToolCall,
@@ -110,6 +126,10 @@ export async function createAgentGraph(modelName?: string) {
                 })}`);
 
                 const hasToolCall = !!state.lastToolCall;
+                
+                // PADRONIZADO: Usa o mesmo critério do primeiro roteamento (validação)
+                const validationPassed = (state.metadata as any)?.validation?.passed !== false;
+
                 if (hasToolCall) {
                     const toolName = state.lastToolCall?.toolName;
                     logger.info(`[DEBUG] Tool call detectada: ${toolName}`);
@@ -128,6 +148,12 @@ export async function createAgentGraph(modelName?: string) {
                     logger.info('[DEBUG] Tool call comum, indo para execução');
                     return 'execute';
                 }
+                
+                // PADRONIZADO: Segue exatamente o mesmo padrão do roteamento de validação
+                if (!validationPassed) {
+                    return 'agent';
+                }
+                
                 logger.info('Nenhuma tool call, finalizando');
                 return 'end';
             },
