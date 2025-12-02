@@ -54,4 +54,4 @@ _diag/
 run-helper.cmd
 bin
 
-package-lock.json
+package-lock.jsonoutputsrun-*.git-credentials
