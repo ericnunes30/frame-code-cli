@@ -55,3 +55,7 @@ run-helper.cmd
 bin
 
 package-lock.jsonoutputsrun-*.git-credentials
+
+.github/
+
+bkp/
