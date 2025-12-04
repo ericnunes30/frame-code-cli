@@ -1,6 +1,6 @@
 import { MCPBaseConfig } from 'frame-agent-sdk';
 
-export const mcpConfig: MCPBaseConfig = {
+export const context7McpConfig: MCPBaseConfig = {
   id: process.env.MCP_ID || 'context7',
   transport: 'stdio',
   command: 'docker',

@@ -1,14 +1,14 @@
 import { MCPBase, toolRegistry } from 'frame-agent-sdk';
 import { logger } from '../../core/logger';
-import { mcpConfig } from './mcp-config';
+import { context7McpConfig } from './context7-mcp-config';
 import { chromeMcpConfig } from './chrome-mcp-config';
 
 export async function registerMcpTools(): Promise<void> {
   // Registrar MCP principal
-  await registerSingleMcp(mcpConfig, 'principal');
+  await registerSingleMcp(context7McpConfig, 'principal');
 
   // Registrar Chrome MCP
-  await registerSingleMcp(chromeMcpConfig, 'Chrome DevTools');
+  // await registerSingleMcp(chromeMcpConfig, 'Chrome DevTools');
 }
 
 async function registerSingleMcp(config: any, name: string): Promise<void> {

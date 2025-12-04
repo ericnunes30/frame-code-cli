@@ -29,9 +29,9 @@ export async function initializeTools(): Promise<void> {
   toolRegistry.register(terminalTool);
 
   // Registrar ferramentas nativas do SDK usadas pelo modo react
-  try { toolRegistry.register(new AskUserTool()); } catch { }
+  // try { toolRegistry.register(new AskUserTool()); } catch { }
   try { toolRegistry.register(new FinalAnswerTool()); } catch { }
-  try { toolRegistry.register(new ApprovalTool()); } catch { }
+  // try { toolRegistry.register(new ApprovalTool()); } catch { }
   try { toolRegistry.register(new TodoListTool()); } catch { }
 
   // Registrar ferramentas MCP (aguardar conclusão)

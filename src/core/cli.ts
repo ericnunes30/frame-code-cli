@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { GraphStatus } from 'frame-agent-sdk';
 import type { ExecuteOptions } from 'frame-agent-sdk/orchestrators/graph';
 import { initializeTools } from './tools';
+import { createAutonomousCommand } from './commands/autonomousCommand';
 import * as readline from 'readline';
 import { loadConfig } from './config';
 import { createAgentGraph } from '../agents/agentFlow';
@@ -325,6 +326,106 @@ program
     }
   });
 
+// Comando autônomo
+program
+  .command('autonomous')
+  .description('Executar frame-code-cli em modo autônomo sem interação humana')
+  .option('-i, --input-file <file>', 'Arquivo de entrada com o prompt')
+  .option('-o, --output-file <file>', 'Arquivo de saída para a resposta')
+  .option('-l, --log-file <file>', 'Arquivo de log detalhado')
+  .option('-v, --verbose', 'Modo verboso com logs detalhados')
+  .action(async (options) => {
+    try {
+      logger.info('[CLI] Executando comando autônomo');
+      
+      // Carregar configuração
+      await loadConfigAsync();
+      
+      let input: string = '';
+      
+      // Ler input do arquivo ou stdin
+      if (options.inputFile) {
+        logger.info(`[CLI] Lendo input de: ${options.inputFile}`);
+        const { readFileSync } = await import('fs');
+        input = readFileSync(options.inputFile, 'utf-8');
+      } else {
+        // Ler do stdin
+        logger.info('[CLI] Lendo input do stdin');
+        const chunks: Buffer[] = [];
+        
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        
+        await new Promise<void>((resolve) => {
+          process.stdin.on('end', () => {
+            input = Buffer.concat(chunks).toString('utf-8');
+            resolve();
+          });
+        });
+      }
+
+      // Inicializar ferramentas
+      await initializeTools();
+
+      // Criar grafo do agente
+      const graph = await createAgentGraph();
+
+      // Estado inicial
+      const initialState = {
+        messages: [{ role: 'user', content: input }],
+        data: {},
+        status: GraphStatus.RUNNING
+      };
+
+      // Executar grafo
+      printLine('🤖 Processando em modo autônomo...');
+      const result = await graph.execute(initialState);
+
+      let output: string;
+      
+      if (result.status === GraphStatus.ERROR) {
+        throw new Error(`Erro durante execução: ${result.state.logs?.join('\n') || 'Erro desconhecido'}`);
+      }
+
+      if (result.status === GraphStatus.FINISHED) {
+        // Extrair última mensagem do assistente
+        const lastAssistantMessage = result.state.messages
+          .filter((msg: any) => msg.role === 'assistant')
+          .pop();
+
+        output = lastAssistantMessage?.content || 'Processamento concluído sem resposta';
+      } else {
+        output = 'Processamento concluído com status: ' + result.status;
+      }
+
+      // Escrever output
+      if (options.outputFile) {
+        logger.info(`[CLI] Escrevendo output em: ${options.outputFile}`);
+        const { writeFileSync } = await import('fs');
+        writeFileSync(options.outputFile, output, 'utf-8');
+      } else {
+        // Imprimir no stdout
+        console.log(output);
+      }
+
+      logger.info('[CLI] Modo autônomo concluído com sucesso');
+
+    } catch (error) {
+      logger.error('[CLI] Erro no modo autônomo:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      
+      if (options.outputFile) {
+        const { writeFileSync } = await import('fs');
+        writeFileSync(options.outputFile, `## Erro durante processamento\n\n${errorMessage}`, 'utf-8');
+      } else {
+        console.error('Erro:', errorMessage);
+      }
+      
+      process.exit(1);
+    }
+  });
+
 // Comando de teste MCP integrado removido
 // Foi movido para o diretório mcp/test.sh
 
@@ -340,6 +441,132 @@ program
 process.on('exit', cleanup);
 process.on('SIGINT', handleShutdown);
 process.on('SIGTERM', handleShutdown);
+
+/**
+ * Processa modo autônomo se as opções forem fornecidas
+ */
+async function handleAutonomousMode() {
+  const options = program.opts();
+  
+  // Verificar se está em modo autônomo
+  if (!options.autonomous) {
+    return false;
+  }
+
+  try {
+    logger.info('[CLI] Modo autônomo detectado');
+    
+    // Carregar configuração
+    await loadConfigAsync();
+    
+    let input: string = '';
+    
+    // Ler input do arquivo ou stdin
+    if (options.inputFile) {
+      logger.info(`[CLI] Lendo input de: ${options.inputFile}`);
+      const { readFileSync } = await import('fs');
+      input = readFileSync(options.inputFile, 'utf-8');
+    } else {
+      // Ler do stdin
+      logger.info('[CLI] Lendo input do stdin');
+      const chunks: Buffer[] = [];
+      
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      
+      await new Promise<void>((resolve) => {
+        process.stdin.on('end', () => {
+          input = Buffer.concat(chunks).toString('utf-8');
+          resolve();
+        });
+      });
+    }
+
+    // Inicializar ferramentas
+    await initializeTools();
+
+    // Criar grafo do agente
+    const graph = await createAgentGraph();
+
+    // Estado inicial
+    const initialState = {
+      messages: [{ role: 'user', content: input }],
+      data: {},
+      status: GraphStatus.RUNNING
+    };
+
+    // Executar grafo
+    printLine('🤖 Processando em modo autônomo...');
+    const result = await graph.execute(initialState);
+
+    let output: string;
+    
+    if (result.status === GraphStatus.ERROR) {
+      throw new Error(`Erro durante execução: ${result.state.logs?.join('\n') || 'Erro desconhecido'}`);
+    }
+
+    if (result.status === GraphStatus.FINISHED) {
+      // Extrair última mensagem do assistente
+      const lastAssistantMessage = result.state.messages
+        .filter((msg: any) => msg.role === 'assistant')
+        .pop();
+
+      output = lastAssistantMessage?.content || 'Processamento concluído sem resposta';
+    } else {
+      output = 'Processamento concluído com status: ' + result.status;
+    }
+
+    // Escrever output
+    if (options.outputFile) {
+      logger.info(`[CLI] Escrevendo output em: ${options.outputFile}`);
+      const { writeFileSync } = await import('fs');
+      writeFileSync(options.outputFile, output, 'utf-8');
+    } else {
+      // Imprimir no stdout
+      console.log(output);
+    }
+
+    logger.info('[CLI] Modo autônomo concluído com sucesso');
+    return true;
+
+  } catch (error) {
+    logger.error('[CLI] Erro no modo autônomo:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    
+    if (options.outputFile) {
+      const { writeFileSync } = await import('fs');
+      writeFileSync(options.outputFile, `## Erro durante processamento\n\n${errorMessage}`, 'utf-8');
+    } else {
+      console.error('Erro:', errorMessage);
+    }
+    
+    return true; // Já processamos, não deve continuar
+  }
+}
+
+// Processar argumentos e executar modo autônomo se necessário
+async function main() {
+  try {
+    // Parse dos argumentos
+    program.parse(process.argv);
+    
+    // Se não houver comando especificado, mostrar ajuda
+    if (process.argv.length <= 2) {
+      program.help();
+    }
+    
+  } catch (error) {
+    logger.error('[CLI] Erro ao processar argumentos:', error);
+    process.exit(1);
+  }
+}
+
+// Executar main
+main().catch((error) => {
+  logger.error('[CLI] Erro fatal:', error);
+  process.exit(1);
+});
 
 // Exportar program para uso em outros módulos
 export { program };
