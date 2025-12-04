@@ -16,7 +16,7 @@
   "homepage": "https://github.com/ericnunes/frame-code-cli#readme",
   "scripts": {
     "build": "tsc && npm run copy:prompts",
-    "copy:prompts": "xcopy /E /I /Y src\\\\prompts dist\\\\prompts || cp -r src/prompts dist/prompts",
+    "copy:prompts": "mkdir -p dist/prompts && cp -r src/prompts/* dist/prompts/",
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
     "log:view": "tail -f server.log",
