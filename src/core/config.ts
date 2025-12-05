@@ -12,6 +12,12 @@ export interface IConfig {
     maxContextTokens?: number; // Tokens de contexto/memória
     temperature?: number;
   };
+  skills?: {
+    enabled?: boolean;
+    directory?: string;
+    maxTokens?: number;
+    relevanceThreshold?: number;
+  };
 }
 
 export async function loadConfig(): Promise<IConfig> {
