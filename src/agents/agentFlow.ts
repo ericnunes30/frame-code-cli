@@ -9,6 +9,7 @@ import {
     PromptBuilder
 } from 'frame-agent-sdk';
 import { createToolDetectionWrapper } from '../core/toolDetectionWrapper';
+import { SkillLoader } from '../core/skillLoader';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../core/logger';
@@ -18,6 +19,13 @@ import { loadConfig } from '../core/config';
 export async function createAgentGraph(modelName?: string) {
     // Carregar configuração
     const config = await loadConfig();
+
+    // Carregar skills se habilitado
+    let activeSkills: any[] = [];
+    if (config.skills?.enabled !== false) {
+      const skillLoader = new SkillLoader(config.skills?.directory);
+      activeSkills = await skillLoader.loadAllSkills();
+    }
 
     // Carregar prompt do sistema usando PromptBuilder (com logs de debug)
     let systemPrompt = '';
@@ -35,7 +43,8 @@ export async function createAgentGraph(modelName?: string) {
                 backstory: 'Você é um desenvolvedor júnior focado em programação.'
             },
             additionalInstructions: fallbackPrompt,
-            tools: toolRegistry.listTools()
+            tools: toolRegistry.listTools(),
+            skills: activeSkills
         });
 
         logger.info('[DEBUG] System prompt gerado via PromptBuilder com logs habilitados');
