@@ -1,13 +1,13 @@
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
 import { writeFileSync } from 'fs';
-import { logger } from '../logger';
+import { logger } from '../services/logger';
 import { createAgentGraph } from '../../agents/agentFlow';
 import { GraphStatus } from 'frame-agent-sdk';
-import { initializeTools } from '../tools';
-import { loadConfig } from '../config';
+import { initializeTools } from '../services/tools';
+import { loadConfig } from '../services/config';
 
-interface AutonomousOptions {
+export interface AutonomousOptions {
   inputFile?: string;
   outputFile?: string;
   logFile?: string;
@@ -17,7 +17,7 @@ interface AutonomousOptions {
 /**
  * Processa input autônomo sem interação humana
  */
-async function processAutonomousInput(input: string, options: AutonomousOptions): Promise<string> {
+export async function processAutonomousInput(input: string, options: AutonomousOptions): Promise<string> {
   try {
     logger.info('[Autonomous] Iniciando processamento autônomo');
     
@@ -30,6 +30,16 @@ async function processAutonomousInput(input: string, options: AutonomousOptions)
 
     // Criar grafo do agente
     const graph = await createAgentGraph();
+    
+    // Verificar se compressão está habilitada
+    const isCompressionEnabled = graph && typeof graph === 'object' && 'isCompressionEnabled' in graph;
+    if (isCompressionEnabled) {
+      logger.info('[Autonomous] Executando com compressão inteligente habilitada');
+      const stats = graph.getStats?.();
+      if (stats?.compression?.enabled) {
+        logger.info(`[Autonomous] Memória: ${stats.compression.currentCompressions}/${stats.compression.maxCompressions} compressões`);
+      }
+    }
 
     // Estado inicial
     const initialState = {
@@ -45,16 +55,16 @@ async function processAutonomousInput(input: string, options: AutonomousOptions)
       throw new Error(`Erro durante execução: ${result.state.logs?.join('\n') || 'Erro desconhecido'}`);
     }
 
-    if (result.status === GraphStatus.FINISHED) {
-      // Extrair última mensagem do assistente
-      const lastAssistantMessage = result.state.messages
-        .filter((msg: any) => msg.role === 'assistant')
-        .pop();
-
-      return lastAssistantMessage?.content || 'Processamento concluído sem resposta';
+    if (result.status !== GraphStatus.FINISHED) {
+      return 'Processamento concluído com status: ' + result.status;
     }
 
-    return 'Processamento concluído com status: ' + result.status;
+    // Extrair última mensagem do assistente
+    const lastAssistantMessage = result.state.messages
+      .filter((msg: any) => msg.role === 'assistant')
+      .pop();
+
+    return lastAssistantMessage?.content || 'Processamento concluído sem resposta';
   } catch (error) {
     logger.error('[Autonomous] Erro no processamento:', error);
     throw error;
@@ -100,7 +110,9 @@ export function createAutonomousCommand(): Command {
         }
 
         // Processar
+        logger.debug('[Autonomous] Iniciando processamento do input');
         const result = await processAutonomousInput(input, options);
+        logger.debug(`[Autonomous] Processamento concluído, resultado: ${result.substring(0, 50)}...`);
 
         // Escrever output
         if (options.outputFile) {
@@ -108,6 +120,7 @@ export function createAutonomousCommand(): Command {
           writeFileSync(options.outputFile, result, 'utf-8');
         } else {
           // Imprimir no stdout
+          logger.debug('[Autonomous] Imprimindo resultado no console');
           console.log(result);
         }
 
@@ -126,8 +139,10 @@ export function createAutonomousCommand(): Command {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         
         if (options.outputFile) {
+          logger.debug(`[Autonomous] Escrevendo erro no arquivo: ${options.outputFile}`);
           writeFileSync(options.outputFile, `## Erro durante processamento\n\n${errorMessage}`, 'utf-8');
         } else {
+          logger.debug('[Autonomous] Imprimindo erro no console');
           console.error('Erro:', errorMessage);
         }
         

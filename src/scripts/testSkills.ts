@@ -1,5 +1,5 @@
-import { SkillLoader } from '../core/skillLoader';
-import { logger } from '../core/logger';
+import { SkillLoader } from '../core/utils/skillLoader';
+import { logger } from '../core/services/logger';
 
 /**
  * Script para testar se o prompt está sendo construído corretamente com as skills.

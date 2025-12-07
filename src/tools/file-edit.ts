@@ -1,7 +1,7 @@
 import { ToolBase, IToolParams } from 'frame-agent-sdk';
 import * as fs from 'fs';
 import fastDiff from 'fast-diff';
-import { logger } from '../core/logger';
+import { logger } from '../core/services/logger';
 
 // Constantes para os tipos de operação do fast-diff
 const DIFF_EQUAL = 0;

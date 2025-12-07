@@ -1,6 +1,10 @@
 #!/usr/bin/env ts-node
 /// <reference types="node" />
-import { spawnSync } from 'child_process';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { loadConfigSync } from '../../src/core/services/config';
+
+loadConfigSync();
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -25,6 +29,7 @@ const issueNumber = params['issue-number'];
 
 if (!owner || !repo || !issueNumber) {
   console.error('Erro: --owner, --repo e --issue-number são obrigatórios.');
+  console.error('Uso: npx ts-node issue-details.ts --owner <owner> --repo <repo> --issue-number <number>');
   process.exit(1);
 }
 
@@ -34,57 +39,52 @@ if (!token) {
   process.exit(1);
 }
 
-// MCP request para ler issue específica
-const mcpRequest = {
-  jsonrpc: "2.0",
-  id: 1,
-  method: "tools/call",
-  params: {
-    name: "issue_read",
-    arguments: {
-      owner,
-      repo,
-      issue_number: parseInt(issueNumber)
+async function main() {
+  const client = new Client({
+    name: "github-issues-cli",
+    version: "1.0.0"
+  });
+
+  const transport = new StdioClientTransport({
+    command: 'docker',
+    args: [
+      'run', '-i', '--rm',
+      '-e', `GITHUB_PERSONAL_ACCESS_TOKEN=${token}`,
+      '-e', 'GITHUB_TOOLSETS=issues',
+      'ghcr.io/github/github-mcp-server',
+      'stdio'
+    ]
+  });
+
+  try {
+    await client.connect(transport);
+
+    const result = await client.callTool({
+      name: "issue_read",
+      arguments: {
+        owner,
+        repo,
+        issue_number: parseInt(issueNumber),
+        method: 'get'
+      }
+    });
+
+    if (result.content && Array.isArray(result.content)) {
+      for (const item of result.content) {
+        if (item.type === 'text') {
+          console.log(item.text);
+        }
+      }
+    } else {
+      console.log(JSON.stringify(result, null, 2));
     }
-  }
-};
 
-const dockerArgs = [
-  'run',
-  '-i',
-  '--rm',
-  '-e', `GITHUB_PERSONAL_ACCESS_TOKEN=${token}`,
-  '-e', 'GITHUB_TOOLSETS=issues',
-  'ghcr.io/github/github-mcp-server',
-  'stdio'
-];
-
-const child = spawnSync('docker', dockerArgs, {
-  input: JSON.stringify(mcpRequest),
-  encoding: 'utf-8'
-});
-
-if (child.error) {
-  console.error('Erro ao executar Docker:', child.error.message);
-  process.exit(1);
-}
-
-if (child.status !== 0) {
-  console.error('Erro na execução do MCP:', child.stderr);
-  process.exit(child.status || 1);
-}
-
-try {
-  const response = JSON.parse(child.stdout.trim());
-  if (response.result) {
-    console.log(JSON.stringify(response.result, null, 2));
-  } else if (response.error) {
-    console.error('Erro do MCP:', response.error);
+  } catch (error: any) {
+    console.error('❌ Erro:', error.message);
     process.exit(1);
-  } else {
-    console.log('Resposta inesperada:', response);
+  } finally {
+    await client.close();
   }
-} catch (e) {
-  console.error('Erro ao parsear resposta:', e);
-  console.log('Resposta bruta:', child.stdout);
 }
+
+main();

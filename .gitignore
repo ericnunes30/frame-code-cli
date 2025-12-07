@@ -62,3 +62,9 @@ bkp/
 
 # Ignorar arquivos gerados pelo buildSkillRegistry
 src/generated/
+
+# Ignorar arquivos registry.js compilados em .code-skills
+.code-skills/**/registry.js
+
+docs/*
+.md*

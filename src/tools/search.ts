@@ -2,7 +2,7 @@ import { ToolBase, IToolParams } from 'frame-agent-sdk';
 import { glob } from 'glob';
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger } from '../core/logger';
+import { logger } from '../core/services/logger';
 import * as v from 'valibot';
 
 const toolLog = (...args: any[]) => {
@@ -108,6 +108,23 @@ class AdvancedSearchTool extends ToolBase<SearchParams, SearchResponse> {
   private readonly defaultExcludePatterns = ['node_modules/**', 'dist/**', '.git/**'];
 
   private validateAndParseParams(params: SearchParams): v.InferOutput<typeof SearchParamsSchema> {
+    // Mapear valores inválidos comuns para os valores corretos
+    const invalidToValidMap: { [key: string]: SearchTypeEnum } = {
+      'file': SearchTypeEnum.FILENAME,
+      'fileContent': SearchTypeEnum.CONTENT,
+      'filecontent': SearchTypeEnum.CONTENT,
+      'files': SearchTypeEnum.FILENAME,
+      'name': SearchTypeEnum.FILENAME,
+      'content': SearchTypeEnum.CONTENT
+    };
+    
+    const searchTypeValue = params.searchType as any;
+    if (searchTypeValue && invalidToValidMap[searchTypeValue]) {
+      const correctedValue = invalidToValidMap[searchTypeValue];
+      toolLog(`Corrigindo searchType inválido "${searchTypeValue}" para "${correctedValue}"`);
+      params.searchType = correctedValue;
+    }
+    
     const result = v.safeParse(SearchParamsSchema, params);
     
     if (!result.success) {

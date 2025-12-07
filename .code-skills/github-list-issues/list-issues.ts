@@ -1,11 +1,15 @@
 #!/usr/bin/env ts-node
 /// <reference types="node" />
 /**
- * Script autossuficiente para listar issues de um repositório GitHub via MCP Docker
- * Independente do projeto principal e SDK
+ * Script para listar issues de um repositório GitHub via MCP SDK
+ * Usa o container Docker github-mcp-server que deve estar rodando
  */
-import { spawnSync } from 'child_process';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { loadConfigSync } from '../../src/core/services/config';
 
+// Carregar variáveis de ambiente usando o config do projeto
+loadConfigSync();
 
 // Simple CLI args parser
 function parseArgs() {
@@ -33,87 +37,80 @@ const limit = params.limit || '10';
 
 if (!owner || !repo) {
   console.error('Erro: --owner e --repo são obrigatórios.');
+  console.error('Uso: npx ts-node list-issues.ts --owner <owner> --repo <repo> [--state open|closed] [--limit 10]');
   process.exit(1);
 }
 
-// Monta comando Docker MCP no modo stdio
 const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
 if (!token) {
   console.error('Erro: GITHUB_PERSONAL_ACCESS_TOKEN não está definido no ambiente.');
   process.exit(1);
 }
 
-// Cria um script MCP JSON-RPC para buscar issues
-const mcpRequest: any = {
-  jsonrpc: "2.0",
-  id: 1,
-  method: "tools/call",
-  params: {
-    name: "search_issues",
-    arguments: {
-      owner: owner,
-      repo: repo,
-      state: state,
-      limit: parseInt(limit)
+async function main() {
+  console.log(`🔍 Listando issues de ${owner}/${repo}...`);
+
+  // Criar cliente MCP
+  const client = new Client({
+    name: 'github-issues-cli',
+    version: '1.0.0'
+  });
+
+  // Criar transporte stdio conectando ao container Docker
+  const transport = new StdioClientTransport({
+    command: 'docker',
+    args: [
+      'run', '-i', '--rm',
+      '-e', `GITHUB_PERSONAL_ACCESS_TOKEN=${token}`,
+      'ghcr.io/github/github-mcp-server',
+      'stdio'
+    ]
+  });
+
+  try {
+    // Conectar ao servidor MCP
+    console.log('📡 Conectando ao GitHub MCP Server...');
+    await client.connect(transport);
+    console.log('✅ Conectado!');
+
+    // Preparar argumentos
+    const toolArgs: Record<string, unknown> = {
+      owner,
+      repo,
+      state: state.toUpperCase(),
+      perPage: parseInt(limit)
+    };
+
+    if (labels) {
+      toolArgs.labels = labels.split(',').map((l: string) => l.trim());
     }
-  }
-};
 
-if (labels) {
-  mcpRequest.params.arguments.labels = labels.split(',').map((l: string) => l.trim());
-}
+    // Chamar a ferramenta list_issues
+    console.log('📋 Buscando issues...\n');
+    const result = await client.callTool({
+      name: 'list_issues',
+      arguments: toolArgs
+    });
 
-const dockerArgs = [
-  'run',
-  '-i',
-  '--rm',
-  '-e', `GITHUB_PERSONAL_ACCESS_TOKEN=${token}`,
-  'ghcr.io/github/github-mcp-server',
-  'stdio',
-  '--toolsets=issues'
-];
-
-const { spawn } = require('child_process');
-const docker = spawn('docker', dockerArgs);
-let output = '';
-let errorOutput = '';
-
-docker.stdout.on('data', (data: any) => {
-  output += data.toString();
-});
-
-docker.stderr.on('data', (data: any) => {
-  errorOutput += data.toString();
-});
-
-docker.on('close', (code: number) => {
-  if (code !== 0) {
-    console.error('Erro na execução do MCP:', errorOutput);
-    process.exit(code || 1);
-  }
-
-  // Envia requisição MCP
-  docker.stdin.write(JSON.stringify(mcpRequest) + '\n');
-
-  // Aguarda resposta e processa
-  setTimeout(() => {
-    try {
-      const lines = output.trim().split('\n');
-      for (const line of lines) {
-        if (line.trim()) {
-          const response = JSON.parse(line);
-          if (response.result) {
-            console.log(JSON.stringify(response.result, null, 2));
-            process.exit(0);
-          }
+    // Processar resultado
+    if (result.content && Array.isArray(result.content)) {
+      for (const item of result.content) {
+        if (item.type === 'text') {
+          console.log(item.text);
         }
       }
-      console.log('Nenhuma issue encontrada ou resposta inválida.');
-      process.exit(0);
-    } catch (e) {
-      console.error('Erro ao processar resposta:', e);
-      console.log('Saída bruta:', output);
-      process.exit(1);
+    } else {
+      console.log('Resultado:');
+      console.log(JSON.stringify(result, null, 2));
     }
-  }, 2000);
-});
+
+  } catch (error: any) {
+    console.error('❌ Erro:', error.message);
+    process.exit(1);
+  } finally {
+    // Fechar conexão
+    await client.close();
+  }
+}
+
+main();

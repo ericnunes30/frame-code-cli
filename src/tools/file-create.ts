@@ -1,7 +1,7 @@
 import { ToolBase, IToolParams } from 'frame-agent-sdk';
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger } from '../core/logger';
+import { logger } from '../core/services/logger';
 const SHOW_TOOL_LOGS_INLINE = (process.env.SHOW_TOOL_LOGS_INLINE || '').toLowerCase() === 'true';
 const toolLog = (...args: any[]) => {
   if (SHOW_TOOL_LOGS_INLINE) {
