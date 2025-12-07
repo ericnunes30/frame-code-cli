@@ -94,7 +94,7 @@ export class LLMCompressionService {
   private buildInitialCompressionPrompt(context: string): string {
     return `Você é um especialista em sumarizar conversas de desenvolvimento.
 
-Comprima este contexto completo em uma sumarização concisa (máx 300 tokens):
+Comprima este contexto completo em uma sumarização concisa:
 ${context}
 
 Formato obrigatório: "COMPRESSÃO 1: [sua sumarização]"
@@ -104,6 +104,11 @@ Preserve:
 - Contexto técnico essencial
 - Primeiras decisões ou requisitos
 - Arquivos ou tecnologias mencionadas
+
+Priorize:
+- Informações técnicas importantes sobre código, arquivos e decisões
+- Requisitos e objetivos definidos
+- Problemas e soluções identificados
 
 Responda APENAS com a compressão no formato especificado, sem comentários adicionais.`;
   }
@@ -133,6 +138,11 @@ Mantenha:
 - Decisões importantes de todas as etapas
 - Problemas resolvidos e pendências
 - Continuidade do contexto técnico
+
+Priorize:
+- Informações técnicas importantes sobre código, arquivos e decisões
+- Requisitos e objetivos definidos
+- Problemas e soluções identificados
 
 Responda APENAS com a compressão no formato especificado, sem comentários adicionais.`;
   }
@@ -164,6 +174,10 @@ Responda APENAS com a compressão combinada no formato especificado, sem coment�
       baseURL: this.llmConfig.baseUrl,
     });
 
+    // Obter maxTokens da configuração de compressão
+    const config = loadConfigSync();
+    const maxTokens = config.compression?.maxTokens || 500;
+
     try {
       const response = await openai.chat.completions.create({
         model: this.modelName,
@@ -173,7 +187,7 @@ Responda APENAS com a compressão combinada no formato especificado, sem coment�
             content: prompt
           }
         ],
-        max_tokens: 500, // Limitar output da compressão
+        max_tokens: maxTokens, // Usar maxTokens configurado
         temperature: 0.3, // Baixa temperatura para consistência
       });
 
