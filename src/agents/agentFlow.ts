@@ -5,20 +5,34 @@ import {
     createToolExecutorNode,
     createReactValidationNode,
     AgentLLMConfig,
-    AgentMode,
-    PromptBuilder
+    AgentMode
 } from 'frame-agent-sdk';
-import { createToolDetectionWrapper } from '../core/toolDetectionWrapper';
-import { SkillLoader } from '../core/skillLoader';
+import { CLIPromptBuilder } from '../core/utils/CLIPromptBuilder';
+import { createToolDetectionWrapper } from '../core/utils/toolWrapper';
+import { SkillLoader } from '../core/utils/skillLoader';
+import { CompressionManager } from '../core/services/CompressionManager';
+import { GraphExecutionWrapper } from '../core/utils/graphExecutionWrapper';
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger } from '../core/logger';
-import { toolRegistry } from '../core/tools';
-import { loadConfig } from '../core/config';
+import { logger } from '../core/services/logger';
+import { toolRegistry } from '../core/services/tools';
+import { loadConfig } from '../core/services/config';
 
-export async function createAgentGraph(modelName?: string) {
+export async function createAgentGraph(modelName?: string): Promise<GraphEngine | import('../core/utils/graphExecutionWrapper').GraphExecutionWrapper> {
     // Carregar configuração
     const config = await loadConfig();
+
+    // Criar CompressionManager para gerenciar compressão (se habilitado)
+    let compressionManager: any = null;
+    let compressionPrompt = '';
+    
+    if (config.compression?.enabled !== false) {
+        compressionManager = new CompressionManager(config.compression);
+        compressionPrompt = compressionManager.getCompressionPrompt();
+        
+        logger.info('[AgentFlow] CompressionManager inicializado');
+        logger.debug('[AgentFlow] Config de compressão:', config.compression);
+    }
 
     // Carregar skills se habilitado
     let activeSkills: any[] = [];
@@ -30,27 +44,28 @@ export async function createAgentGraph(modelName?: string) {
     // Carregar prompt do sistema usando PromptBuilder (com logs de debug)
     let systemPrompt = '';
     try {
-        // Tentar ler arquivo markdown como fallback
-        const promptPath = path.join(__dirname, '../prompts/system-prompt-generator.md');
-        const fallbackPrompt = fs.readFileSync(promptPath, 'utf-8');
+        // Carregar prompt específico para CLI
+        const promptPath = path.join(__dirname, '../prompts/system-prompt-cli.md');
+        const cliPrompt = fs.readFileSync(promptPath, 'utf-8');
 
-        // Usar PromptBuilder para gerar prompt com logs de debug
-        systemPrompt = PromptBuilder.buildSystemPrompt({
+        // Usar CLIPromptBuilder para gerar prompt com contexto de compressão
+        systemPrompt = CLIPromptBuilder.buildSystemPrompt({
             mode: 'react' as any,
             agentInfo: {
-                name: 'GeneratorAgent',
-                goal: 'Executar tarefas de codificação e responder perguntas',
-                backstory: 'Você é um desenvolvedor júnior focado em programação.'
+                name: 'CLIAssistant',
+                goal: 'Ajudar desenvolvedores com tarefas de codificação e responder perguntas técnicas',
+                backstory: 'Você é um assistente de desenvolvimento experiente, focado em fornecer ajuda prática e eficiente.'
             },
-            additionalInstructions: fallbackPrompt,
+            additionalInstructions: cliPrompt,
+            compressionHistory: compressionPrompt, // Adicionar contexto de compressão
             tools: toolRegistry.listTools(),
             skills: activeSkills
         });
 
-        logger.info('[DEBUG] System prompt gerado via PromptBuilder com logs habilitados');
+        logger.info('[DEBUG] System prompt CLI gerado via PromptBuilder com compressão');
     } catch (error) {
-        logger.error(`Erro ao gerar prompt do sistema:`, error);
-        systemPrompt = 'Você é um assistente útil.';
+        logger.error(`Erro ao gerar prompt do sistema CLI:`, error);
+        systemPrompt = 'Você é um assistente de desenvolvimento útil.';
     }
 
     // Usar modelo do parâmetro ou da configuração
@@ -76,9 +91,9 @@ export async function createAgentGraph(modelName?: string) {
         llm: llmConfig,
         mode: 'react' as AgentMode,
         agentInfo: {
-            name: 'GeneratorAgent',
-            goal: 'Executar tarefas de codificação e responder perguntas',
-            backstory: 'Você é um desenvolvedor júnior focado em programação.'
+            name: 'Code Agent',
+            goal: 'Planejar e Executar tarefas de codificação (E em alguns casos interagir com usuários)',
+            backstory: 'Você é um desenvolvedor Sênior especializado em multiplas áreas.'
         },
         additionalInstructions: systemPrompt,
         tools: toolRegistry.listTools(),
@@ -183,5 +198,19 @@ export async function createAgentGraph(modelName?: string) {
     };
 
     // Criar GraphEngine passando llmConfig para configurar ChatHistoryManager
-    return new GraphEngine(graphDefinition, undefined, llmConfig);
+    const graphEngine = new GraphEngine(graphDefinition, undefined, llmConfig);
+
+    // Se compressão estiver habilitada, retornar wrapper com tratamento automático
+    if (compressionManager) {
+        logger.info('[AgentFlow] Criando GraphExecutionWrapper com compressão habilitada');
+        const wrapper = new GraphExecutionWrapper(
+            graphEngine, 
+            compressionManager
+        );
+        return wrapper;
+    }
+
+    // Caso contrário, retornar GraphEngine diretamente (comportamento original)
+    logger.info('[AgentFlow] Retornando GraphEngine sem compressão');
+    return graphEngine;
 }

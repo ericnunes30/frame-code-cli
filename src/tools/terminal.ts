@@ -1,6 +1,6 @@
 import { ToolBase, IToolParams } from 'frame-agent-sdk';
 import { randomUUID } from 'crypto';
-import { logger } from '../core/logger';
+import { logger } from '../core/services/logger';
 import treeKill from 'tree-kill';
 
 const SHOW_TOOL_LOGS_INLINE = (process.env.SHOW_TOOL_LOGS_INLINE || '').toLowerCase() === 'true';

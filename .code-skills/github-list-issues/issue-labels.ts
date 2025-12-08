@@ -26,17 +26,11 @@ const params = parseArgs();
 const owner = params.owner;
 const repo = params.repo;
 const issueNumber = params['issue-number'];
-const reason = params.reason || 'completed';
+const labels = params.labels;
 
-if (!owner || !repo || !issueNumber) {
-  console.error('Erro: --owner, --repo e --issue-number são obrigatórios.');
-  console.error('Uso: npx ts-node issue-close.ts --owner <owner> --repo <repo> --issue-number <num> [--reason completed]');
-  process.exit(1);
-}
-
-const validReasons = ['completed', 'not_planned', 'reopened'];
-if (!validReasons.includes(reason)) {
-  console.error('Erro: --reason deve ser um dos:', validReasons.join(', '));
+if (!owner || !repo || !issueNumber || !labels) {
+  console.error('Erro: --owner, --repo, --issue-number e --labels são obrigatórios.');
+  console.error('Uso: npx ts-node issue-labels.ts --owner <owner> --repo <repo> --issue-number <number> --labels "label1,label2"');
   process.exit(1);
 }
 
@@ -47,8 +41,6 @@ if (!token) {
 }
 
 async function main() {
-  console.log(`🔒 Fechando issue #${issueNumber} (motivo: ${reason})...`);
-
   const client = new Client({
     name: "github-issues-cli",
     version: "1.0.0"
@@ -66,8 +58,21 @@ async function main() {
   });
 
   try {
+    console.log('📡 Conectando ao GitHub MCP Server...');
     await client.connect(transport);
+    console.log('✅ Conectado!');
 
+    // Parsear labels
+    const labelArray = labels.split(',').map(label => label.trim()).filter(label => label.length > 0);
+    
+    if (labelArray.length === 0) {
+      console.error('Erro: Nenhuma label válida fornecida.');
+      process.exit(1);
+    }
+
+    console.log(`🏷️  Aplicando labels [${labelArray.join(', ')}] à Issue #${issueNumber}...`);
+    
+    // Aplicar labels à issue
     const result = await client.callTool({
       name: "issue_write",
       arguments: {
@@ -75,26 +80,29 @@ async function main() {
         owner,
         repo,
         issue_number: parseInt(issueNumber),
-        state: 'closed',
-        state_reason: reason
+        labels: labelArray
       }
     });
 
-    console.log('✅ Issue fechada com sucesso!');
-
-    if (result.content && Array.isArray(result.content)) {
-      for (const item of result.content) {
-        if (item.type === 'text') {
-          console.log(item.text);
-        }
-      }
-    }
+    console.log('✅ Labels aplicados com sucesso!');
+    
+    // Retornar resultado em formato JSON
+    console.log('\n📊 RESULTADO JSON:');
+    console.log(JSON.stringify({
+      issue: parseInt(issueNumber),
+      labelsApplied: labelArray,
+      status: 'success'
+    }, null, 2));
 
   } catch (error: any) {
     console.error('❌ Erro:', error.message);
     process.exit(1);
   } finally {
-    await client.close();
+    try {
+      await client.close();
+    } catch (e) {
+      // Ignora erro ao fechar se já estiver fechado
+    }
   }
 }
 

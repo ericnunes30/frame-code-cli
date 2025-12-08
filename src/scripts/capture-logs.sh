@@ -21,6 +21,7 @@ export NODE_OPTIONS="--no-warnings"
 export NODE_ENV=development
 export FORCE_COLOR=1
 export DEBUG="*"
+export DEBUG=true
 
 # Função para executar comando com captura máxima
 execute_with_max_capture() {
