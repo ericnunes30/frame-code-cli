@@ -100,7 +100,7 @@ export function loadConfigSync(): IConfig {
       enabled: process.env.COMPRESSION_ENABLED !== 'false',
       threshold: parseFloat(process.env.COMPRESSION_THRESHOLD || '0.8'),
       maxCount: parseInt(process.env.COMPRESSION_MAX_COUNT || '5'),
-      maxTokens: parseInt(process.env.COMPRESSION_MAX_TOKENS || '300'),
+      maxTokens: parseInt(process.env.COMPRESSION_MAX_TOKENS || '1500'),
       model: process.env.COMPRESSION_MODEL,
       logging: process.env.COMPRESSION_LOGGING !== 'false',
       persist: process.env.COMPRESSION_PERSIST !== 'false'
