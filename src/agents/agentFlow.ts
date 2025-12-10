@@ -5,7 +5,10 @@ import {
     createToolExecutorNode,
     createReactValidationNode,
     AgentLLMConfig,
-    AgentMode
+    AgentMode,
+    GraphStatus,
+    type GraphNode,
+    type IGraphState
 } from 'frame-agent-sdk';
 import { CLIPromptBuilder } from '../core/utils/CLIPromptBuilder';
 import { createToolDetectionWrapper } from '../core/utils/toolWrapper';
@@ -108,8 +111,48 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
     // 3. Nó de Detecção de Tools (com wrapper para formatação)
     const toolDetectionNode = createToolDetectionWrapper();
 
-    // 4. Nó de Execução de Tools
-    const toolExecutorNode = createToolExecutorNode();
+    // 4. Nó de Execução de Tools com tratamento de erros
+    const baseToolExecutorNode = createToolExecutorNode();
+    
+    const toolExecutorNode: GraphNode = async (state: IGraphState, engine: GraphEngine) => {
+        logger.info(`[CustomToolExecutor] Executando nó customizado com tratamento de erros`);
+        
+        // Verificar se há erro de execução da ferramenta
+        if (state.status === GraphStatus.ERROR) {
+            logger.info('[CustomToolExecutor] Erro detectado na execução da ferramenta, preparando feedback para o agente');
+            
+            // Extrair mensagem de erro dos logs
+            const errorMessage = state.logs?.join('\n') || 'Erro desconhecido na execução da ferramenta';
+            const toolName = state.lastToolCall?.toolName || 'desconhecida';
+            
+            // Adicionar mensagem de erro formatada ao contexto do agente
+            engine.addMessage({
+                role: 'system',
+                content: `❌ Erro na execução da ferramenta "${toolName}":\n\n${errorMessage}\n\nPor favor, corrija os parâmetros e tente novamente.`
+            });
+            
+            logger.info(`[CustomToolExecutor] Mensagem de erro adicionada ao contexto: ${errorMessage.substring(0, 100)}...`);
+            
+            // Retornar estado modificado para permitir recuperação
+            return {
+                ...state,
+                status: GraphStatus.RUNNING, // Resetar status para continuar execução
+                lastToolCall: undefined, // Limpar a chamada com erro
+                // Adicionar metadata para controle do erro
+                metadata: {
+                    ...(state.metadata || {}),
+                    lastToolError: {
+                        toolName,
+                        errorMessage,
+                        timestamp: new Date().toISOString()
+                    }
+                }
+            };
+        }
+        
+        // Se não houver erro, executar o nó base normalmente
+        return baseToolExecutorNode(state, engine);
+    };
 
     // Definição do Grafo
     const graphDefinition: GraphDefinition = {
@@ -124,7 +167,7 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                 logger.info('[DEBUG] Nó end executado - finalizando grafo');
                 return {
                     ...state,
-                    status: 'finished' as any,
+                    status: GraphStatus.FINISHED,
                     shouldEnd: true
                 };
             }
