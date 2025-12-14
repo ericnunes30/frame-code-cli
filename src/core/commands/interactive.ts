@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as readline from 'readline';
 import { logger } from '../services/logger';
-import { createAgentGraph } from '../../agents/agentFlow';
+import { createAgentGraph } from '../../agents/agentCode';
 import { GraphStatus } from 'frame-agent-sdk';
 import { initializeTools } from '../services/tools';
 import { loadConfig } from '../services/config';
@@ -13,18 +13,18 @@ let interactiveExecuted = false; // Flag global para prevenir duplicação
 
 export function createInteractiveCommand(): Command {
   const command = new Command('interactive');
-  
+
   command
     .description('Iniciar modo interativo')
     .action(async () => {
-       try {
-         if (interactiveExecuted) {
-           return;
-         }
-         interactiveExecuted = true;
-         await loadConfig();
- 
-         console.log('.frame-agent CLI');
+      try {
+        if (interactiveExecuted) {
+          return;
+        }
+        interactiveExecuted = true;
+        await loadConfig();
+
+        console.log('.frame-agent CLI');
         console.log('==============================================');
         console.log('Modo Chat Interativo');
         console.log('Dica: Digite suas perguntas ou "sair" para encerrar');
@@ -44,7 +44,7 @@ export function createInteractiveCommand(): Command {
 
         console.log('Inicializando agente...');
         const graph = await createAgentGraph();
-        
+
         // Verificar se compressão está habilitada
         const isCompressionEnabled = graph && typeof graph === 'object' && 'isCompressionEnabled' in graph;
         if (isCompressionEnabled) {
@@ -68,9 +68,9 @@ export function createInteractiveCommand(): Command {
             };
 
             console.log('Processando...');
-            
+
             const result = await graph.execute(newState);
-            
+
             // Atualizar estado apenas com as mensagens mais recentes
             currentState.messages = result.state.messages;
             currentState.data = result.state.data;
@@ -100,9 +100,9 @@ export function createInteractiveCommand(): Command {
           if (promptActive) {
             return;
           }
-          
+
           promptActive = true;
-          
+
           rl.question('Você: ', async (input: string) => {
             promptActive = false; // Liberar flag no início do handler
             const trimmedInput = input.trim();

@@ -7,7 +7,7 @@ import { logger } from '../services/logger';
  */
 export function formatToolCallForTerminal(toolCall: IToolCall): void {
   logger.debug(`[Formatter] Formatando toolCall: ${toolCall.toolName}`);
-  
+
   // Para final_answer, apenas exibimos o conteúdo da resposta
   if (toolCall.toolName === 'final_answer') {
     const answer = (toolCall.params as any)?.answer || 'Resposta não especificada';
@@ -18,7 +18,7 @@ export function formatToolCallForTerminal(toolCall: IToolCall): void {
     console.log('');
     return;
   }
-  
+
   // Para ask_user, exibimos como pergunta
   if (toolCall.toolName === 'ask_user') {
     const question = (toolCall.params as any)?.question || 'Pergunta não especificada';
@@ -29,12 +29,16 @@ export function formatToolCallForTerminal(toolCall: IToolCall): void {
     console.log('');
     return;
   }
-  
-  // Para outras ferramentas, exibimos o pensamento e a ação
+
+  // Para outras ferramentas, exibimos o pensamento real e a ação
   logger.debug(`[Formatter] Exibindo toolCall genérica: ${toolCall.toolName}`);
   console.log('');
   console.log('🤖 Agente:');
-  console.log(`   O usuário quer que eu execute a ferramenta \`${toolCall.toolName}\` para isso.`);
+  if (toolCall.thought) {
+    console.log(`   Thought: ${toolCall.thought}`);
+  } else {
+    console.log(`   Thought: Executando ferramenta ${toolCall.toolName}`);
+  }
   console.log(`   - Action: ${toolCall.toolName} = ${JSON.stringify(toolCall.params || {})}`);
   console.log('');
 }
