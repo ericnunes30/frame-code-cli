@@ -19,7 +19,7 @@ export function createToolDetectionWrapper(): GraphNode {
     // Se uma tool call foi detectada, formatar e exibir (apenas se não for final_answer ou ask_user)
     if (result.lastToolCall) {
       logger.debug(`[ToolWrapper] Tool call detectada: ${result.lastToolCall.toolName}`);
-      
+
       // Não formatar final_answer e ask_user para evitar duplicação com Thought/Action
       if (result.lastToolCall.toolName !== 'final_answer' && result.lastToolCall.toolName !== 'ask_user') {
         try {

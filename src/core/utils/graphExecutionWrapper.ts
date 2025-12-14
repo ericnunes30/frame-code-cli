@@ -17,7 +17,7 @@ export function isTokenOverflowError(error: Error): boolean {
     'context window',
     'tokens exceed'
   ];
-  
+
   return tokenErrorKeywords.some(keyword => errorMessage.includes(keyword));
 }
 
@@ -53,16 +53,16 @@ export class GraphExecutionWrapper {
 
         // Executar o grafo
         const result = await this.graphEngine.execute(currentState);
-        
+
         if (attempts > 0) {
           logger.info(`[GraphExecutionWrapper] Execução bem-sucedida após ${attempts} tentativas`);
         }
-        
+
         return result;
 
       } catch (error) {
         const isTokenError = error instanceof Error && isTokenOverflowError(error);
-        
+
         if (!isTokenError || attempts >= maxRetries) {
           // Se não for erro de tokens ou excedeu tentativas, propagar erro
           logger.error(`[GraphExecutionWrapper] Erro na execução (tentativa ${attempts + 1}):`, error);
@@ -71,7 +71,7 @@ export class GraphExecutionWrapper {
 
         // Erro de tokens detectado - tentar compressão emergencial
         logger.warn(`[GraphExecutionWrapper] Erro de tokens detectado (tentativa ${attempts + 1}):`, error instanceof Error ? error.message : error);
-        
+
         try {
           currentState = await this.compressionManager.handleTokenOverflow(error as Error, currentState);
           logger.info(`[GraphExecutionWrapper] Compressão emergencial realizada, tentando novamente`);
@@ -81,7 +81,7 @@ export class GraphExecutionWrapper {
           throw error;
         }
       }
-      
+
       attempts++;
     }
 

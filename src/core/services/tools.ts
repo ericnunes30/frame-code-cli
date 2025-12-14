@@ -1,10 +1,12 @@
-import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, TodoListTool, ITool } from 'frame-agent-sdk';
+import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, ToDoIstTool, ITool } from 'frame-agent-sdk';
 import {
   searchTool,
   fileCreateTool,
   applySearchReplaceTool,
   fileReadTool,
   terminalTool,
+  listSkillsTool,
+  enableSkillTool
 } from '../../tools';
 import { registerMcpTools } from '../../tools/mcp/register';
 import { logger } from './logger';
@@ -34,8 +36,10 @@ export async function initializeTools(): Promise<void> {
     applySearchReplaceTool,
     fileReadTool,
     terminalTool,
+    listSkillsTool,
+    enableSkillTool,
     new FinalAnswerTool(),
-    new TodoListTool()
+    new ToDoIstTool()
   ];
 
   // Adicionar askUser apenas se não estiver no modo autônomo

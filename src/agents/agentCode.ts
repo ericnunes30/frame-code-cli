@@ -5,18 +5,14 @@ import {
     createToolExecutorNode,
     createReactValidationNode,
     AgentLLMConfig,
-    AgentMode,
     GraphStatus,
     type GraphNode,
     type IGraphState
 } from 'frame-agent-sdk';
-import { CLIPromptBuilder } from '../core/utils/CLIPromptBuilder';
+import { loadSystemPrompt } from '../core/utils/loadSystemPrompt';
 import { createToolDetectionWrapper } from '../core/utils/toolWrapper';
-import { SkillLoader } from '../core/utils/skillLoader';
 import { CompressionManager } from '../core/services/CompressionManager';
 import { GraphExecutionWrapper } from '../core/utils/graphExecutionWrapper';
-import * as fs from 'fs';
-import * as path from 'path';
 import { logger } from '../core/services/logger';
 import { toolRegistry } from '../core/services/tools';
 import { loadConfig } from '../core/services/config';
@@ -28,46 +24,29 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
     // Criar CompressionManager para gerenciar compressão (se habilitado)
     let compressionManager: any = null;
     let compressionPrompt = '';
-    
+
     if (config.compression?.enabled !== false) {
         compressionManager = new CompressionManager(config.compression);
         compressionPrompt = compressionManager.getCompressionPrompt();
-        
+
         logger.info('[AgentFlow] CompressionManager inicializado');
         logger.debug('[AgentFlow] Config de compressão:', config.compression);
     }
 
-    // Carregar skills se habilitado
-    let activeSkills: any[] = [];
-    if (config.skills?.enabled !== false) {
-      const skillLoader = new SkillLoader(config.skills?.directory);
-      activeSkills = await skillLoader.loadAllSkills();
-    }
+    // Skills não são mais carregadas no prompt inicial
+    // Usamos sistema de progressive disclosure via list_skills e enable_skill
+    const activeSkills: any[] = [];
 
-    // Carregar prompt do sistema usando PromptBuilder (com logs de debug)
+    // Carregar prompt do sistema - apenas o conteúdo bruto do arquivo
     let systemPrompt = '';
     try {
-        // Carregar prompt específico para CLI
-        const promptPath = path.join(__dirname, '../prompts/system-prompt-cli.md');
-        const cliPrompt = fs.readFileSync(promptPath, 'utf-8');
+        // Usar loadSystemPrompt.loadFileContent para carregar apenas o conteúdo do arquivo
+        // Passando o compressionPrompt como contexto
+        systemPrompt = loadSystemPrompt.loadFileContent('system-prompt-code.md', compressionPrompt);
 
-        // Usar CLIPromptBuilder para gerar prompt com contexto de compressão
-        systemPrompt = CLIPromptBuilder.buildSystemPrompt({
-            mode: 'react' as any,
-            agentInfo: {
-                name: 'CLIAssistant',
-                goal: 'Ajudar desenvolvedores com tarefas de codificação e responder perguntas técnicas',
-                backstory: 'Você é um assistente de desenvolvimento experiente, focado em fornecer ajuda prática e eficiente.'
-            },
-            additionalInstructions: cliPrompt,
-            compressionHistory: compressionPrompt, // Adicionar contexto de compressão
-            tools: toolRegistry.listTools(),
-            skills: activeSkills
-        });
-
-        logger.info('[DEBUG] System prompt CLI gerado via PromptBuilder com compressão');
+        logger.info('[DEBUG] System prompt carregado via loadFileContent');
     } catch (error) {
-        logger.error(`Erro ao gerar prompt do sistema CLI:`, error);
+        logger.error(`Erro ao carregar system prompt:`, error);
         systemPrompt = 'Você é um assistente de desenvolvimento útil.';
     }
 
@@ -82,7 +61,8 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
         apiKey: config.apiKey,
         baseUrl: config.baseURL,
         defaults: {
-            maxTokens: config.defaults?.maxContextTokens, // Para memória/contexto
+            maxTokens: config.defaults?.maxTokens, // Para output por call ao LLM
+            maxContextTokens: config.defaults?.maxContextTokens, // Para memória/contexto
             temperature: config.defaults?.temperature,
         }
     };
@@ -92,14 +72,16 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
     // 1. Nó do Agente
     const agentNode = createAgentNode({
         llm: llmConfig,
-        mode: 'react' as AgentMode,
-        agentInfo: {
-            name: 'Code Agent',
-            goal: 'Planejar e Executar tarefas de codificação (E em alguns casos interagir com usuários)',
-            backstory: 'Você é um desenvolvedor Sênior especializado em multiplas áreas.'
+        promptConfig: {
+            mode: 'react' as any,
+            agentInfo: {
+                name: 'Code Agent (Autonomous & Resilient)',
+                goal: 'Engenheiro de Software Sênior Autônomo.',
+                backstory: 'Você é um desenvolvedor de elite focado em Engenharia e Arquitetura de Software.\nSua filosofia de trabalho é baseada em três pilares:\n1. Ceticismo Construtivo: Você não confia que o código funciona só porque você o escreveu; você exige provas (evidência/logs).\n2. Integridade de Dados: Você trata o sistema de arquivos do projeto atual como sagrado. Jamais destrói para consertar.\n3. Metodologia Científica: Você planeja, executa, mede e, se falhar, ajusta a hipótese (estratégia) em vez de forçar a mesma solução.\nVocê é especialista em navegar por bases de código desconhecidas seguindo as regras do arquivo AGENTS.md.'
+            },
+            additionalInstructions: systemPrompt,
+            tools: toolRegistry.listTools()
         },
-        additionalInstructions: systemPrompt,
-        tools: toolRegistry.listTools(),
         autoExecuteTools: false,
         temperature: config.defaults?.temperature,
         maxTokens: config.defaults?.maxTokens, // Para output por call ao LLM
@@ -113,26 +95,26 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
 
     // 4. Nó de Execução de Tools com tratamento de erros
     const baseToolExecutorNode = createToolExecutorNode();
-    
+
     const toolExecutorNode: GraphNode = async (state: IGraphState, engine: GraphEngine) => {
         logger.info(`[CustomToolExecutor] Executando nó customizado com tratamento de erros`);
-        
+
         // Verificar se há erro de execução da ferramenta
         if (state.status === GraphStatus.ERROR) {
             logger.info('[CustomToolExecutor] Erro detectado na execução da ferramenta, preparando feedback para o agente');
-            
+
             // Extrair mensagem de erro dos logs
             const errorMessage = state.logs?.join('\n') || 'Erro desconhecido na execução da ferramenta';
             const toolName = state.lastToolCall?.toolName || 'desconhecida';
-            
+
             // Adicionar mensagem de erro formatada ao contexto do agente
             engine.addMessage({
                 role: 'system',
                 content: `❌ Erro na execução da ferramenta "${toolName}":\n\n${errorMessage}\n\nPor favor, corrija os parâmetros e tente novamente.`
             });
-            
+
             logger.info(`[CustomToolExecutor] Mensagem de erro adicionada ao contexto: ${errorMessage.substring(0, 100)}...`);
-            
+
             // Retornar estado modificado para permitir recuperação
             return {
                 ...state,
@@ -149,7 +131,7 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                 }
             };
         }
-        
+
         // Se não houver erro, executar o nó base normalmente
         return baseToolExecutorNode(state, engine);
     };
@@ -177,7 +159,7 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
             validate: (state) => {
                 // Verificar se a validação ReAct passou
                 const validationPassed = (state.metadata as any)?.validation?.passed !== false;
-                
+
                 if (validationPassed) {
                     return 'detect';
                 } else {
@@ -193,7 +175,7 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                 })}`);
 
                 const hasToolCall = !!state.lastToolCall;
-                
+
                 // PADRONIZADO: Usa o mesmo critério do primeiro roteamento (validação)
                 const validationPassed = (state.metadata as any)?.validation?.passed !== false;
 
@@ -215,12 +197,12 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                     logger.info('[DEBUG] Tool call comum, indo para execução');
                     return 'execute';
                 }
-                
+
                 // PADRONIZADO: Segue exatamente o mesmo padrão do roteamento de validação
                 if (!validationPassed) {
                     return 'agent';
                 }
-                
+
                 logger.info('Nenhuma tool call, finalizando');
                 return 'end';
             },
@@ -247,7 +229,7 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
     if (compressionManager) {
         logger.info('[AgentFlow] Criando GraphExecutionWrapper com compressão habilitada');
         const wrapper = new GraphExecutionWrapper(
-            graphEngine, 
+            graphEngine,
             compressionManager
         );
         return wrapper;

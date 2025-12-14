@@ -1,6 +1,6 @@
 import { PromptBuilder } from 'frame-agent-sdk';
 import type { AgentInfo, PromptMode, ToolSchema } from 'frame-agent-sdk';
-import type { ISkill } from 'frame-agent-sdk';
+
 import { logger } from '../services/logger';
 
 /**
@@ -10,22 +10,22 @@ import { logger } from '../services/logger';
 export interface ICLIPromptBuilderConfig {
   /** Modo do agente */
   mode: PromptMode;
-  
+
   /** Informações do agente */
   agentInfo: AgentInfo;
-  
+
   /** Instruções adicionais do usuário */
   additionalInstructions?: string;
-  
+
   /** Histórico de compressão de contexto */
   compressionHistory?: string;
-  
+
   /** Tools disponíveis */
   tools?: ToolSchema[];
-  
+
   /** Nomes das tools para conversão automática */
   toolNames?: string[];
-  
+
   /** Lista de tarefas */
   taskList?: {
     items: Array<{
@@ -34,9 +34,9 @@ export interface ICLIPromptBuilderConfig {
       status: 'pending' | 'in_progress' | 'completed';
     }>
   };
-  
+
   /** Skills disponíveis */
-  skills?: ISkill[];
+
 }
 
 /**
@@ -65,14 +65,14 @@ export class CLIPromptBuilder {
    * Constrói System Prompt com suporte a contexto de compressão
    */
   static buildSystemPrompt(config: ICLIPromptBuilderConfig): string {
-    const { mode, agentInfo, additionalInstructions, compressionHistory, tools, toolNames, taskList, skills } = config;
+    const { mode, agentInfo, additionalInstructions, compressionHistory, tools, toolNames, taskList } = config;
 
     // Se houver contexto de compressão, formatar com instruções claras
     let finalAdditionalInstructions = additionalInstructions || '';
-    
+
     if (compressionHistory && compressionHistory.trim().length > 0) {
       const formattedCompressionContext = this.formatCompressionContext(compressionHistory);
-      
+
       // Adicionar contexto de compressão formatado no final das instruções adicionais
       if (finalAdditionalInstructions.trim().length > 0) {
         finalAdditionalInstructions = finalAdditionalInstructions + '\n\n' + formattedCompressionContext;
@@ -88,8 +88,8 @@ export class CLIPromptBuilder {
       additionalInstructions: finalAdditionalInstructions,
       tools,
       toolNames,
-      taskList,
-      skills
+      taskList
+      // skills removido pois não existe no tipo PromptBuilderConfig do SDK
     });
   }
 
@@ -104,7 +104,7 @@ export class CLIPromptBuilder {
       tools?: ToolSchema[];
       toolNames?: string[];
       taskList?: any;
-      skills?: ISkill[];
+
     }
   ): string {
     return this.buildSystemPrompt({
@@ -133,7 +133,7 @@ export class CLIPromptBuilder {
 
     // Tentar inserir antes da seção "Additional Instructions" se existir
     const additionalInstructionsIndex = existingPrompt.indexOf('## Additional Instructions');
-    
+
     if (additionalInstructionsIndex > -1) {
       // Inserir antes da seção Additional Instructions
       const before = existingPrompt.substring(0, additionalInstructionsIndex);
@@ -150,7 +150,7 @@ export class CLIPromptBuilder {
    */
   static removeCompressionFromPrompt(prompt: string): string {
     const compressionSectionStart = prompt.indexOf('## Context History');
-    
+
     if (compressionSectionStart === -1) {
       return prompt; // Não há seção de compressão
     }
@@ -158,7 +158,7 @@ export class CLIPromptBuilder {
     // Encontrar o final da seção (próxima seção ou fim do prompt)
     const compressionSectionContent = prompt.substring(compressionSectionStart);
     const nextSectionIndex = compressionSectionContent.indexOf('\n---', 3);
-    
+
     if (nextSectionIndex > -1) {
       // Remover apenas a seção de compressão
       const before = prompt.substring(0, compressionSectionStart);
@@ -182,14 +182,14 @@ export class CLIPromptBuilder {
    */
   static extractCompressionContext(prompt: string): string | null {
     const compressionSectionStart = prompt.indexOf('## Context History');
-    
+
     if (compressionSectionStart === -1) {
       return null;
     }
 
     const compressionSectionContent = prompt.substring(compressionSectionStart + '## Context History'.length);
     const endOfSectionIndex = compressionSectionContent.indexOf('\n---');
-    
+
     if (endOfSectionIndex > -1) {
       return compressionSectionContent.substring(1, endOfSectionIndex).trim();
     } else {
@@ -202,13 +202,13 @@ export class CLIPromptBuilder {
    */
   static buildDebugPrompt(config: ICLIPromptBuilderConfig): string {
     const prompt = this.buildSystemPrompt(config);
-    
+
     logger.debug('[CLIPromptBuilder] Prompt construído:', {
       mode: config.mode,
       hasCompression: !!config.compressionHistory,
       hasAdditionalInstructions: !!config.additionalInstructions,
       hasTools: !!(config.tools || config.toolNames),
-      hasSkills: !!(config.skills && config.skills.length > 0),
+
       promptLength: prompt.length
     });
 
