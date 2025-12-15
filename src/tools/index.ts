@@ -1,8 +1,19 @@
-// Exportar tools para agentes de codificação
-export { fileReadTool } from './file-read';
-export { applySearchReplaceTool } from './file-edit';
-export { terminalTool } from './terminal';
-export { searchTool } from './search';
-export { fileCreateTool } from './file-create';
+// Importar tools migradas do SDK
+import { 
+  FileReadTool, 
+  FileEditTool, 
+  FileCreateTool, 
+  TerminalTool, 
+  SearchTool 
+} from 'frame-agent-sdk';
+
+// Re-exportar tools para compatibilidade
+export const fileReadTool = FileReadTool;
+export const fileEditTool = FileEditTool;
+export const terminalTool = TerminalTool;
+export const searchTool = SearchTool;
+export const fileCreateTool = FileCreateTool;
+
+// Tools locais (não migradas)
 export { fileOutlineTool } from './file-outline';
 export { listSkillsTool, enableSkillTool } from './skills';
