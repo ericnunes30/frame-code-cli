@@ -2,9 +2,10 @@ import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, ToDoIstTool, 
 import {
   searchTool,
   fileCreateTool,
-  applySearchReplaceTool,
+  fileEditTool,
   fileReadTool,
   terminalTool,
+  fileOutlineTool,
   listSkillsTool,
   enableSkillTool
 } from '../../tools';
@@ -33,9 +34,10 @@ export async function initializeTools(): Promise<void> {
   const allTools: ITool[] = [
     searchTool,
     fileCreateTool,
-    applySearchReplaceTool,
+    fileEditTool,
     fileReadTool,
     terminalTool,
+    fileOutlineTool,
     listSkillsTool,
     enableSkillTool,
     new FinalAnswerTool(),
