@@ -7,7 +7,8 @@ import {
   terminalTool,
   fileOutlineTool,
   listSkillsTool,
-  enableSkillTool
+  enableSkillTool,
+  listDirectoryTool
 } from '../../tools';
 import { registerMcpTools } from '../../tools/mcp/register';
 import { logger } from './logger';
@@ -21,18 +22,25 @@ let toolsInitialized = false;
  * Inicializa todas as ferramentas (síncronas e assíncronas)
  * Deve ser chamado antes de usar o toolRegistry
  */
-export async function initializeTools(): Promise<void> {
+export async function initializeTools(options?: { allowAskUser?: boolean }): Promise<void> {
   if (toolsInitialized) {
     return;
   }
 
   // Carregar configuração
-  const config = loadConfigSync();
-  const filterConfig = getToolFilterConfig();
+  loadConfigSync();
+  const filterConfig = (() => {
+    const base = getToolFilterConfig();
+    if (typeof options?.allowAskUser === 'boolean') {
+      return { ...base, allowAskUser: options.allowAskUser };
+    }
+    return base;
+  })();
 
   // Criar lista de todas as ferramentas disponíveis
   const allTools: ITool[] = [
     searchTool,
+    listDirectoryTool,
     fileCreateTool,
     fileEditTool,
     fileReadTool,
@@ -45,7 +53,7 @@ export async function initializeTools(): Promise<void> {
   ];
 
   // Adicionar askUser apenas se não estiver no modo autônomo
-  if (filterConfig.mode !== 'autonomous') {
+  if (filterConfig.allowAskUser) {
     allTools.push(new AskUserTool());
   }
 

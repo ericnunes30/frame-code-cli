@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { interactiveCommand } from './commands/interactive';
 import { createAutonomousCommand } from './commands/autonomousCommand';
 import { memoryCommand } from './commands/memoryCommand';
+import { createMultiAgentCommand } from './commands/multiAgentCommand';
 
 
 export const program = new Command()
@@ -16,19 +17,19 @@ export const program = new Command()
 program.addCommand(interactiveCommand);
 program.addCommand(createAutonomousCommand());
 program.addCommand(memoryCommand);
+program.addCommand(createMultiAgentCommand());
 
-async function main() {
+export function runCli(argv: string[] = process.argv) {
   try {
     // Se nenhum comando for especificado, usar modo interativo como padrão
-    if (process.argv.length <= 2) {
-      process.argv.push('interactive');
+    const nextArgv = [...argv];
+    if (nextArgv.length <= 2) {
+      nextArgv.push('interactive');
     }
-    
-    program.parse(process.argv);
+
+    program.parse(nextArgv);
   } catch (error) {
     console.error('Erro:', error);
     process.exit(1);
   }
 }
-
-main();

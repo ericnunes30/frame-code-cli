@@ -16,6 +16,12 @@ export interface ICompressionConfig {
   model?: string;            // Modelo para compressão (opcional)
   logging: boolean;          // Habilitar logs detalhados
   persist: boolean;          // Persistir entre sessões
+  /**
+   * Namespace/identificador para persistência.
+   * Permite isolar compressões por execução/fluxo/agente sem acoplar a "fluxo".
+   * Default: 'default'
+   */
+  persistKey?: string;
 }
 
 /**
@@ -26,6 +32,7 @@ export class CompressionManager {
   private readonly llmService: LLMCompressionService;
   private readonly compressionConfig: ICompressionConfig;
   private readonly maxCompressoes: number;
+  private readonly persistKey: string;
   
   // Array de compressões acumulativas
   private compressoes: string[] = [];
@@ -50,6 +57,7 @@ export class CompressionManager {
     };
 
     this.maxCompressoes = this.compressionConfig.maxCount;
+    this.persistKey = sanitizePersistKey(this.compressionConfig.persistKey ?? 'default');
     
     // Inicializar serviço LLM
     this.llmService = new LLMCompressionService();
@@ -72,7 +80,8 @@ export class CompressionManager {
       enabled: this.compressionConfig.enabled,
       maxCompressoes: this.maxCompressoes,
       threshold: this.compressionConfig.threshold,
-      currentCompressions: this.compressoes.length
+      currentCompressions: this.compressoes.length,
+      persistKey: this.persistKey
     });
   }
 
@@ -374,6 +383,7 @@ ${this.compressoes.join('\n')}`;
       maxCompressions: this.maxCompressoes,
       enabled: this.compressionConfig.enabled,
       threshold: this.compressionConfig.threshold,
+      persistKey: this.persistKey,
       compressionHistory: this.compressoes.map((comp, index) => ({
         index: index + 1,
         preview: comp.substring(0, 100) + (comp.length > 100 ? '...' : ''),
@@ -403,11 +413,12 @@ ${this.compressoes.join('\n')}`;
     try {
       const fs = require('fs');
       const path = require('path');
-      const persistPath = path.join(process.cwd(), '.frame-code-compressions.json');
+      const persistPath = path.join(process.cwd(), `.frame-code-compressions.${this.persistKey}.json`);
       
       const data = {
         compressoes: this.compressoes,
         compressionCount: this.compressionCount,
+        persistKey: this.persistKey,
         timestamp: new Date().toISOString()
       };
       
@@ -425,7 +436,7 @@ ${this.compressoes.join('\n')}`;
     try {
       const fs = require('fs');
       const path = require('path');
-      const persistPath = path.join(process.cwd(), '.frame-code-compressions.json');
+      const persistPath = path.join(process.cwd(), `.frame-code-compressions.${this.persistKey}.json`);
       
       if (fs.existsSync(persistPath)) {
         const data = JSON.parse(fs.readFileSync(persistPath, 'utf-8'));
@@ -446,7 +457,7 @@ ${this.compressoes.join('\n')}`;
     try {
       const fs = require('fs');
       const path = require('path');
-      const persistPath = path.join(process.cwd(), '.frame-code-compressions.json');
+      const persistPath = path.join(process.cwd(), `.frame-code-compressions.${this.persistKey}.json`);
       
       if (fs.existsSync(persistPath)) {
         fs.unlinkSync(persistPath);
@@ -469,4 +480,10 @@ ${this.compressoes.join('\n')}`;
     
     return await this.performProactiveCompression(state);
   }
+}
+
+function sanitizePersistKey(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'default';
+  return trimmed.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
 }

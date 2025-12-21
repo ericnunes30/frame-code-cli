@@ -4,57 +4,61 @@ import {
     createAgentNode,
     createToolExecutorNode,
     createReactValidationNode,
+    createToolDetectionNode,
     AgentLLMConfig,
     GraphStatus,
     type GraphNode,
     type IGraphState
 } from 'frame-agent-sdk';
-import { loadSystemPrompt } from '../core/utils/loadSystemPrompt';
-import { createToolDetectionWrapper } from '../core/utils/toolWrapper';
-import { CompressionManager } from '../core/services/CompressionManager';
-import { GraphExecutionWrapper } from '../core/utils/graphExecutionWrapper';
-import { logger } from '../core/services/logger';
-import { toolRegistry } from '../core/services/tools';
-import { loadConfig } from '../core/services/config';
+import { loadSystemPrompt } from '../../core/utils/loadSystemPrompt';
+import { CompressionManager } from '../../core/services/CompressionManager';
+import { createCliContextHooks } from '../../core/utils/cliContextHooks';
+import { logger } from '../../core/services/logger';
+import { toolRegistry } from '../../core/services/tools';
+import { loadConfig } from '../../core/services/config';
+import type { TelemetryOptions, TraceSink } from 'frame-agent-sdk';
 
-export async function createAgentGraph(modelName?: string): Promise<GraphEngine | import('../core/utils/graphExecutionWrapper').GraphExecutionWrapper> {
-    // Carregar configuração
+export async function createAgentGraph(
+  modelName?: string,
+  telemetry?: { trace: TraceSink; telemetry: TelemetryOptions; traceContext?: { agent?: { label?: string } } }
+): Promise<GraphEngine> {
+    // Carregar configuraÃ§Ã£o
     const config = await loadConfig();
 
-    // Criar CompressionManager para gerenciar compressão (se habilitado)
-    let compressionManager: any = null;
+    // Criar CompressionManager para gerenciar compressÃ£o (se habilitado)
+    let compressionManager: CompressionManager | undefined;
     let compressionPrompt = '';
 
     if (config.compression?.enabled !== false) {
-        compressionManager = new CompressionManager(config.compression);
+        compressionManager = new CompressionManager({ ...config.compression, persistKey: 'single-agent' });
         compressionPrompt = compressionManager.getCompressionPrompt();
 
         logger.info('[AgentFlow] CompressionManager inicializado');
-        logger.debug('[AgentFlow] Config de compressão:', config.compression);
+        logger.debug('[AgentFlow] Config de compressÃ£o:', config.compression);
     }
 
-    // Skills não são mais carregadas no prompt inicial
+    // Skills nÃ£o sÃ£o mais carregadas no prompt inicial
     // Usamos sistema de progressive disclosure via list_skills e enable_skill
     const activeSkills: any[] = [];
 
-    // Carregar prompt do sistema - apenas o conteúdo bruto do arquivo
+    // Carregar prompt do sistema - apenas o conteÃºdo bruto do arquivo
     let systemPrompt = '';
     try {
-        // Usar loadSystemPrompt.loadFileContent para carregar apenas o conteúdo do arquivo
+        // Usar loadSystemPrompt.loadFileContent para carregar apenas o conteÃºdo do arquivo
         // Passando o compressionPrompt como contexto
         systemPrompt = loadSystemPrompt.loadFileContent('system-prompt-code.md', compressionPrompt);
 
         logger.info('[DEBUG] System prompt carregado via loadFileContent');
     } catch (error) {
         logger.error(`Erro ao carregar system prompt:`, error);
-        systemPrompt = 'Você é um assistente de desenvolvimento útil.';
+        systemPrompt = 'VocÃª Ã© um assistente de desenvolvimento Ãºtil.';
     }
 
-    // Usar modelo do parâmetro ou da configuração
+    // Usar modelo do parÃ¢metro ou da configuraÃ§Ã£o
     const model = modelName || config.defaults?.model || 'gpt-4o-mini';
 
-    // Configuração do LLM usando config centralizada
-    // defaults.maxContextTokens será usado pelo GraphEngine para criar ChatHistoryManager
+    // ConfiguraÃ§Ã£o do LLM usando config centralizada
+    // defaults.maxContextTokens serÃ¡ usado pelo GraphEngine para criar ChatHistoryManager
     const llmConfig: AgentLLMConfig = {
         model: model,
         provider: config.provider,
@@ -62,63 +66,64 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
         baseUrl: config.baseURL,
         defaults: {
             maxTokens: config.defaults?.maxTokens, // Para output por call ao LLM
-            maxContextTokens: config.defaults?.maxContextTokens, // Para memória/contexto
+            maxContextTokens: config.defaults?.maxContextTokens, // Para memÃ³ria/contexto
             temperature: config.defaults?.temperature,
         }
     };
 
-    // Definição dos Nós
+    // DefiniÃ§Ã£o dos NÃ³s
 
-    // 1. Nó do Agente
+    // 1. NÃ³ do Agente
     const agentNode = createAgentNode({
         llm: llmConfig,
         promptConfig: {
             mode: 'react' as any,
             agentInfo: {
                 name: 'Code Agent (Autonomous & Resilient)',
-                goal: 'Engenheiro de Software Sênior Autônomo.',
-                backstory: 'Você é um desenvolvedor de elite focado em Engenharia e Arquitetura de Software.\nSua filosofia de trabalho é baseada em três pilares:\n1. Ceticismo Construtivo: Você não confia que o código funciona só porque você o escreveu; você exige provas (evidência/logs).\n2. Integridade de Dados: Você trata o sistema de arquivos do projeto atual como sagrado. Jamais destrói para consertar.\n3. Metodologia Científica: Você planeja, executa, mede e, se falhar, ajusta a hipótese (estratégia) em vez de forçar a mesma solução.\nVocê é especialista em navegar por bases de código desconhecidas seguindo as regras do arquivo AGENTS.md.'
+                goal: 'Engenheiro de Software SÃªnior AutÃ´nomo.',
+                backstory: 'VocÃª Ã© um desenvolvedor de elite focado em Engenharia e Arquitetura de Software.\nSua filosofia de trabalho Ã© baseada em trÃªs pilares:\n1. Ceticismo Construtivo: VocÃª nÃ£o confia que o cÃ³digo funciona sÃ³ porque vocÃª o escreveu; vocÃª exige provas (evidÃªncia/logs).\n2. Integridade de Dados: VocÃª trata o sistema de arquivos do projeto atual como sagrado. Jamais destrÃ³i para consertar.\n3. Metodologia CientÃ­fica: VocÃª planeja, executa, mede e, se falhar, ajusta a hipÃ³tese (estratÃ©gia) em vez de forÃ§ar a mesma soluÃ§Ã£o.\nVocÃª Ã© especialista em navegar por bases de cÃ³digo desconhecidas seguindo as regras do arquivo AGENTS.md.'
             },
             additionalInstructions: systemPrompt,
             tools: toolRegistry.listTools()
         },
+        contextHooks: createCliContextHooks(compressionManager),
         autoExecuteTools: false,
         temperature: config.defaults?.temperature,
         maxTokens: config.defaults?.maxTokens, // Para output por call ao LLM
     });
 
-    // 2. Nó de Validação ReAct
+    // 2. NÃ³ de ValidaÃ§Ã£o ReAct
     const reactValidationNode = createReactValidationNode();
 
-    // 3. Nó de Detecção de Tools (com wrapper para formatação)
-    const toolDetectionNode = createToolDetectionWrapper();
+    // 3. NÃ³ de DetecÃ§Ã£o de Tools (com wrapper para formataÃ§Ã£o)
+    const toolDetectionNode = createToolDetectionNode();
 
-    // 4. Nó de Execução de Tools com tratamento de erros
+    // 4. NÃ³ de ExecuÃ§Ã£o de Tools com tratamento de erros
     const baseToolExecutorNode = createToolExecutorNode();
 
     const toolExecutorNode: GraphNode = async (state: IGraphState, engine: GraphEngine) => {
-        logger.info(`[CustomToolExecutor] Executando nó customizado com tratamento de erros`);
+        logger.info(`[CustomToolExecutor] Executando nÃ³ customizado com tratamento de erros`);
 
-        // Verificar se há erro de execução da ferramenta
+        // Verificar se hÃ¡ erro de execuÃ§Ã£o da ferramenta
         if (state.status === GraphStatus.ERROR) {
-            logger.info('[CustomToolExecutor] Erro detectado na execução da ferramenta, preparando feedback para o agente');
+            logger.info('[CustomToolExecutor] Erro detectado na execuÃ§Ã£o da ferramenta, preparando feedback para o agente');
 
             // Extrair mensagem de erro dos logs
-            const errorMessage = state.logs?.join('\n') || 'Erro desconhecido na execução da ferramenta';
+            const errorMessage = state.logs?.join('\n') || 'Erro desconhecido na execuÃ§Ã£o da ferramenta';
             const toolName = state.lastToolCall?.toolName || 'desconhecida';
 
             // Adicionar mensagem de erro formatada ao contexto do agente
             engine.addMessage({
                 role: 'system',
-                content: `❌ Erro na execução da ferramenta "${toolName}":\n\n${errorMessage}\n\nPor favor, corrija os parâmetros e tente novamente.`
+                content: `âŒ Erro na execuÃ§Ã£o da ferramenta "${toolName}":\n\n${errorMessage}\n\nPor favor, corrija os parÃ¢metros e tente novamente.`
             });
 
             logger.info(`[CustomToolExecutor] Mensagem de erro adicionada ao contexto: ${errorMessage.substring(0, 100)}...`);
 
-            // Retornar estado modificado para permitir recuperação
+            // Retornar estado modificado para permitir recuperaÃ§Ã£o
             return {
                 ...state,
-                status: GraphStatus.RUNNING, // Resetar status para continuar execução
+                status: GraphStatus.RUNNING, // Resetar status para continuar execuÃ§Ã£o
                 lastToolCall: undefined, // Limpar a chamada com erro
                 // Adicionar metadata para controle do erro
                 metadata: {
@@ -132,11 +137,11 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
             };
         }
 
-        // Se não houver erro, executar o nó base normalmente
+        // Se nÃ£o houver erro, executar o nÃ³ base normalmente
         return baseToolExecutorNode(state, engine);
     };
 
-    // Definição do Grafo
+    // DefiniÃ§Ã£o do Grafo
     const graphDefinition: GraphDefinition = {
         entryPoint: 'agent',
         endNodeName: 'end',
@@ -146,7 +151,7 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
             detect: toolDetectionNode,
             execute: toolExecutorNode,
             end: async (state, engine) => {
-                logger.info('[DEBUG] Nó end executado - finalizando grafo');
+                logger.info('[DEBUG] NÃ³ end executado - finalizando grafo');
                 return {
                     ...state,
                     status: GraphStatus.FINISHED,
@@ -157,13 +162,13 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
         edges: {
             agent: 'validate',
             validate: (state) => {
-                // Verificar se a validação ReAct passou
+                // Verificar se a validaÃ§Ã£o ReAct passou
                 const validationPassed = (state.metadata as any)?.validation?.passed !== false;
 
                 if (validationPassed) {
                     return 'detect';
                 } else {
-                    // Se a validação falhou, voltar para o agente com feedback
+                    // Se a validaÃ§Ã£o falhou, voltar para o agente com feedback
                     return 'agent';
                 }
             },
@@ -176,14 +181,14 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
 
                 const hasToolCall = !!state.lastToolCall;
 
-                // PADRONIZADO: Usa o mesmo critério do primeiro roteamento (validação)
+                // PADRONIZADO: Usa o mesmo critÃ©rio do primeiro roteamento (validaÃ§Ã£o)
                 const validationPassed = (state.metadata as any)?.validation?.passed !== false;
 
                 if (hasToolCall) {
                     const toolName = state.lastToolCall?.toolName;
                     logger.info(`[DEBUG] Tool call detectada: ${toolName}`);
 
-                    // Verificar se é uma ferramenta final
+                    // Verificar se Ã© uma ferramenta final
                     if (toolName === 'final_answer') {
                         logger.info('[DEBUG] Detectado final_answer, redirecionando para fim');
                         return 'end';
@@ -194,11 +199,11 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                         return 'end';
                     }
 
-                    logger.info('[DEBUG] Tool call comum, indo para execução');
+                    logger.info('[DEBUG] Tool call comum, indo para execuÃ§Ã£o');
                     return 'execute';
                 }
 
-                // PADRONIZADO: Segue exatamente o mesmo padrão do roteamento de validação
+                // PADRONIZADO: Segue exatamente o mesmo padrÃ£o do roteamento de validaÃ§Ã£o
                 if (!validationPassed) {
                     return 'agent';
                 }
@@ -207,9 +212,9 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                 return 'end';
             },
             execute: (state) => {
-                logger.info(`[DEBUG] Execute node - Última tool: ${state.lastToolCall?.toolName}`);
+                logger.info(`[DEBUG] Execute node - Ãšltima tool: ${state.lastToolCall?.toolName}`);
 
-                // Se foi ask_user ou final_answer, não voltar para agent
+                // Se foi ask_user ou final_answer, nÃ£o voltar para agent
                 if (state.lastToolCall?.toolName === 'final_answer' || state.lastToolCall?.toolName === 'ask_user') {
                     logger.info('[DEBUG] Tool final executada, encerrando fluxo');
                     return 'end';
@@ -218,24 +223,23 @@ export async function createAgentGraph(modelName?: string): Promise<GraphEngine 
                 logger.info('[DEBUG] Voltando para agent node');
                 return 'agent';
             },
-            end: 'end' // Aresta de fallback para o nó end
+            end: 'end' // Aresta de fallback para o nÃ³ end
         }
     };
 
     // Criar GraphEngine passando llmConfig para configurar ChatHistoryManager
-    const graphEngine = new GraphEngine(graphDefinition, undefined, llmConfig);
+    const graphEngine = new GraphEngine(
+      graphDefinition,
+      telemetry
+        ? {
+            trace: telemetry.trace,
+            telemetry: telemetry.telemetry,
+            traceContext: telemetry.traceContext,
+          }
+        : undefined,
+      llmConfig
+    );
 
-    // Se compressão estiver habilitada, retornar wrapper com tratamento automático
-    if (compressionManager) {
-        logger.info('[AgentFlow] Criando GraphExecutionWrapper com compressão habilitada');
-        const wrapper = new GraphExecutionWrapper(
-            graphEngine,
-            compressionManager
-        );
-        return wrapper;
-    }
-
-    // Caso contrário, retornar GraphEngine diretamente (comportamento original)
-    logger.info('[AgentFlow] Retornando GraphEngine sem compressão');
+    logger.info('[AgentFlow] Retornando GraphEngine');
     return graphEngine;
 }

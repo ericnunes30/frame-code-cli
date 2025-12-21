@@ -1,15 +1,16 @@
 import { Command } from 'commander';
 import * as readline from 'readline';
 import { logger } from '../services/logger';
-import { createAgentGraph } from '../../agents/agentCode';
+import { createAgentGraph } from '../../agents/single-agents/agentCode';
 import { GraphStatus } from 'frame-agent-sdk';
 import { initializeTools } from '../services/tools';
 import { loadConfig } from '../services/config';
+import { createCliTelemetry } from '../telemetry';
 
 /**
  * Comando interativo para chat com o agente
  */
-let interactiveExecuted = false; // Flag global para prevenir duplicação
+let interactiveExecuted = false; // Flag global para prevenir duplicaÃ§Ã£o
 
 export function createInteractiveCommand(): Command {
   const command = new Command('interactive');
@@ -37,25 +38,20 @@ export function createInteractiveCommand(): Command {
           output: process.stdout,
         });
 
-        // Log para rastrear criação de interface
+        // Log para rastrear criaÃ§Ã£o de interface
 
         console.log('Inicializando ferramentas...');
         await initializeTools();
 
         console.log('Inicializando agente...');
-        const graph = await createAgentGraph();
+        const { trace, telemetry } = createCliTelemetry();
+        const graph = await createAgentGraph(undefined, {
+          trace,
+          telemetry,
+          traceContext: { agent: { label: 'Agente' } }
+        });
 
-        // Verificar se compressão está habilitada
-        const isCompressionEnabled = graph && typeof graph === 'object' && 'isCompressionEnabled' in graph;
-        if (isCompressionEnabled) {
-          console.log('✅ Agente pronto com compressão inteligente habilitada!');
-          const stats = graph.getStats?.();
-          if (stats?.compression?.enabled) {
-            console.log(`📊 Memória: ${stats.compression.currentCompressions}/${stats.compression.maxCompressions} compressões`);
-          }
-        } else {
-          console.log('🤖 Agente pronto!');
-        }
+        console.log('ðŸ¤– Agente pronto!');
         console.log('');
 
         const processQuestion = async (question: string) => {
@@ -77,24 +73,33 @@ export function createInteractiveCommand(): Command {
             currentState.status = result.state.status;
 
             if (result.status === GraphStatus.FINISHED) {
+              const lastToolCall = (currentState as any).lastToolCall as any;
+              if (lastToolCall?.toolName === 'final_answer') {
+                const answer = lastToolCall?.params?.answer;
+                if (typeof answer === 'string' && answer.trim().length > 0) {
+                  console.log('\nðŸ¤– ' + answer);
+                  return;
+                }
+              }
+
               const lastAssistantMessage = currentState.messages
                 .filter((msg: any) => msg.role === 'assistant')
                 .pop();
 
               if (lastAssistantMessage) {
-                console.log('\n🤖 ' + lastAssistantMessage.content);
+                console.log('\nðŸ¤– ' + lastAssistantMessage.content);
               }
             } else if (result.status === GraphStatus.ERROR) {
-              console.log('\n❌ Erro na execução: ' + (currentState.logs?.join('\n') || 'Erro desconhecido'));
+              console.log('\nâŒ Erro na execuÃ§Ã£o: ' + (currentState.logs?.join('\n') || 'Erro desconhecido'));
             }
 
           } catch (error) {
-            logger.error('Erro no processamento da questão:', error);
-            console.log('\n❌ Ocorreu um erro ao processar sua solicitação.');
+            logger.error('Erro no processamento da questÃ£o:', error);
+            console.log('\nâŒ Ocorreu um erro ao processar sua solicitaÃ§Ã£o.');
           }
         };
 
-        let promptActive = false; // Flag para evitar múltiplos prompts simultâneos
+        let promptActive = false; // Flag para evitar mÃºltiplos prompts simultÃ¢neos
 
         const showPrompt = () => {
           if (promptActive) {
@@ -103,8 +108,8 @@ export function createInteractiveCommand(): Command {
 
           promptActive = true;
 
-          rl.question('Você: ', async (input: string) => {
-            promptActive = false; // Liberar flag no início do handler
+          rl.question('VocÃª: ', async (input: string) => {
+            promptActive = false; // Liberar flag no inÃ­cio do handler
             const trimmedInput = input.trim();
 
             if (
@@ -112,7 +117,7 @@ export function createInteractiveCommand(): Command {
               trimmedInput.toLowerCase() === 'exit' ||
               trimmedInput.toLowerCase() === 'quit'
             ) {
-              console.log('Até mais! Obrigado por usar o frame-agent.');
+              console.log('AtÃ© mais! Obrigado por usar o frame-agent.');
               rl.close();
               return;
             }
@@ -128,7 +133,7 @@ export function createInteractiveCommand(): Command {
               logger.error('Erro em processQuestion:', error);
             }
 
-            // Só mostrar prompt se ainda estiver no modo interativo
+            // SÃ³ mostrar prompt se ainda estiver no modo interativo
             console.log('\n' + '='.repeat(50) + '\n');
             showPrompt();
           });
@@ -138,7 +143,7 @@ export function createInteractiveCommand(): Command {
         showPrompt();
 
         rl.on('close', () => {
-          console.log('\nSessão encerrada. Até a próxima!');
+          console.log('\nSessÃ£o encerrada. AtÃ© a prÃ³xima!');
           process.exit(0);
         });
 
@@ -156,3 +161,4 @@ export function createInteractiveCommand(): Command {
 }
 
 export const interactiveCommand = createInteractiveCommand();
+

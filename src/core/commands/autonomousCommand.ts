@@ -1,11 +1,12 @@
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
 import { writeFileSync } from 'fs';
 import { logger } from '../services/logger';
-import { createAgentGraph } from '../../agents/agentCode';
+import { createAgentGraph } from '../../agents/single-agents/agentCode';
 import { GraphStatus } from 'frame-agent-sdk';
 import { initializeTools } from '../services/tools';
 import { loadConfig } from '../services/config';
+import { readCliInput } from '../utils/readCliInput';
+import { createCliTelemetry } from '../telemetry';
 
 export interface AutonomousOptions {
   inputFile?: string;
@@ -16,11 +17,11 @@ export interface AutonomousOptions {
 }
 
 /**
- * Processa input autônomo sem interação humana
+ * Processa input autÃ´nomo sem interaÃ§Ã£o humana
  */
 export async function processAutonomousInput(input: string, options: AutonomousOptions): Promise<string> {
   try {
-    logger.info('[Autonomous] Iniciando processamento autônomo');
+    logger.info('[Autonomous] Iniciando processamento autÃ´nomo');
 
     if (options.verbose) {
       logger.info(`[Autonomous] Input recebido: ${input.substring(0, 200)}...`);
@@ -29,18 +30,14 @@ export async function processAutonomousInput(input: string, options: AutonomousO
     // Inicializar ferramentas
     await initializeTools();
 
-    // Criar grafo do agente
-    const graph = await createAgentGraph();
+    const { trace, telemetry } = createCliTelemetry();
 
-    // Verificar se compressão está habilitada
-    const isCompressionEnabled = graph && typeof graph === 'object' && 'isCompressionEnabled' in graph;
-    if (isCompressionEnabled) {
-      logger.info('[Autonomous] Executando com compressão inteligente habilitada');
-      const stats = graph.getStats?.();
-      if (stats?.compression?.enabled) {
-        logger.info(`[Autonomous] Memória: ${stats.compression.currentCompressions}/${stats.compression.maxCompressions} compressões`);
-      }
-    }
+    // Criar grafo do agente
+    const graph = await createAgentGraph(undefined, {
+      trace,
+      telemetry,
+      traceContext: { agent: { label: 'Agente' } }
+    });
 
     // Estado inicial
     const initialState = {
@@ -53,19 +50,27 @@ export async function processAutonomousInput(input: string, options: AutonomousO
     const result = await graph.execute(initialState);
 
     if (result.status === GraphStatus.ERROR) {
-      throw new Error(`Erro durante execução: ${result.state.logs?.join('\n') || 'Erro desconhecido'}`);
+      throw new Error(`Erro durante execuÃ§Ã£o: ${result.state.logs?.join('\n') || 'Erro desconhecido'}`);
     }
 
     if (result.status !== GraphStatus.FINISHED) {
-      return 'Processamento concluído com status: ' + result.status;
+      return 'Processamento concluÃ­do com status: ' + result.status;
     }
 
-    // Extrair última mensagem do assistente
+    // Extrair Ãºltima mensagem do assistente
+    const lastToolCall = (result.state as any).lastToolCall as any;
+    if (lastToolCall?.toolName === 'final_answer') {
+      const answer = lastToolCall?.params?.answer;
+      if (typeof answer === 'string' && answer.trim().length > 0) {
+        return answer;
+      }
+    }
+
     const lastAssistantMessage = result.state.messages
       .filter((msg: any) => msg.role === 'assistant')
       .pop();
 
-    return lastAssistantMessage?.content || 'Processamento concluído sem resposta';
+    return lastAssistantMessage?.content || 'Processamento concluÃ­do sem resposta';
   } catch (error) {
     logger.error('[Autonomous] Erro no processamento:', error);
     throw error;
@@ -73,60 +78,36 @@ export async function processAutonomousInput(input: string, options: AutonomousO
 }
 
 /**
- * Comando autônomo para processamento sem interação humana
+ * Comando autÃ´nomo para processamento sem interaÃ§Ã£o humana
  */
 export function createAutonomousCommand(): Command {
   const command = new Command('autonomous');
 
   command
-    .description('Executar frame-code-cli em modo autônomo sem interação humana')
+    .description('Executar frame-code-cli em modo autÃ´nomo sem interaÃ§Ã£o humana')
     .argument('[additional-input]', 'Texto adicional com prioridade sobre o arquivo de entrada')
     .option('-i, --input-file <file>', 'Arquivo de entrada com o prompt')
-    .option('-o, --output-file <file>', 'Arquivo de saída para a resposta')
+    .option('-o, --output-file <file>', 'Arquivo de saÃ­da para a resposta')
     .option('-l, --log-file <file>', 'Arquivo de log detalhado')
     .option('-v, --verbose', 'Modo verboso com logs detalhados')
     .action(async (additionalInput: string, options: AutonomousOptions) => {
       try {
-        // Carregar configuração
+        // Carregar configuraÃ§Ã£o
         await loadConfig();
 
-        let input: string = '';
+        const input = await readCliInput({ inputFile: options.inputFile, additionalInput });
 
         // Ler input do arquivo primeiro
-        if (options.inputFile) {
-          logger.info(`[Autonomous] Lendo input de: ${options.inputFile}`);
-          input = readFileSync(options.inputFile, 'utf-8');
-        }
 
         // Adicionar input adicional se fornecido
         if (additionalInput) {
-          logger.info(`[Autonomous] Adicionando input prioritário: ${additionalInput.substring(0, 100)}...`);
-          if (input) {
-            input += '\n\n' + additionalInput; // Adiciona ao final do arquivo
-          } else {
-            input = additionalInput; // Usa apenas o texto adicional se não há arquivo
-          }
-        }
-
-        // Se não tem nem arquivo nem texto adicional, ler do stdin
-        if (!input) {
-          logger.info('[Autonomous] Lendo input do stdin');
-          const chunks: Buffer[] = [];
-          process.stdin.setEncoding('utf8');
-          process.stdin.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-
-          await new Promise<void>((resolve) => {
-            process.stdin.on('end', () => {
-              input = Buffer.concat(chunks).toString('utf-8');
-              resolve();
-            });
-          });
+          logger.info(`[Autonomous] Adicionando input prioritÃ¡rio: ${additionalInput.substring(0, 100)}...`);
         }
 
         // Processar
         logger.debug('[Autonomous] Iniciando processamento do input');
         const result = await processAutonomousInput(input, options);
-        logger.debug(`[Autonomous] Processamento concluído, resultado: ${result.substring(0, 50)}...`);
+        logger.debug(`[Autonomous] Processamento concluÃ­do, resultado: ${result.substring(0, 50)}...`);
 
         // Escrever output
         if (options.outputFile) {
@@ -140,11 +121,11 @@ export function createAutonomousCommand(): Command {
 
         // Escrever log detalhado se solicitado
         if (options.logFile) {
-          const logContent = 'Logs detalhados não implementados';
+          const logContent = 'Logs detalhados nÃ£o implementados';
           writeFileSync(options.logFile, logContent, 'utf-8');
         }
 
-        logger.info('[Autonomous] Processamento autônomo concluído com sucesso');
+        logger.info('[Autonomous] Processamento autÃ´nomo concluÃ­do com sucesso');
         process.exit(0);
 
       } catch (error) {
@@ -166,3 +147,4 @@ export function createAutonomousCommand(): Command {
 
   return command;
 }
+
