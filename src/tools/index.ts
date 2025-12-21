@@ -17,3 +17,4 @@ export const fileCreateTool = FileCreateTool;
 // Tools locais (não migradas)
 export { fileOutlineTool } from './file-outline';
 export { listSkillsTool, enableSkillTool } from './skills';
+export { listDirectoryTool } from './list-directory';

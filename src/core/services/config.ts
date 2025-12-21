@@ -33,15 +33,24 @@ export interface IConfig {
   };
 }
 
-export async function loadConfig(): Promise<IConfig> {
-  // Carregar variáveis de ambiente
+let envLoaded = false;
+
+function ensureEnvLoaded(): void {
+  if (envLoaded) return;
+
   dotenv.config();
 
-  // Verificar se existe arquivo .env.local
   const localEnvPath = join(process.cwd(), '.env.local');
   if (existsSync(localEnvPath)) {
     dotenv.config({ path: localEnvPath });
   }
+
+  envLoaded = true;
+}
+
+export async function loadConfig(): Promise<IConfig> {
+  // Carregar variáveis de ambiente
+  ensureEnvLoaded();
 
   return {
     provider: process.env.LLM_PROVIDER || 'openai',
@@ -75,16 +84,7 @@ export async function loadConfig(): Promise<IConfig> {
  */
 export function loadConfigSync(): IConfig {
   // Carregar variáveis de ambiente de forma síncrona
-  const dotenv = require('dotenv');
-  dotenv.config();
-
-  // Verificar se existe arquivo .env.local
-  const { existsSync } = require('fs');
-  const { join } = require('path');
-  const localEnvPath = join(process.cwd(), '.env.local');
-  if (existsSync(localEnvPath)) {
-    dotenv.config({ path: localEnvPath });
-  }
+  ensureEnvLoaded();
 
   return {
     provider: process.env.LLM_PROVIDER || 'openai',
@@ -100,7 +100,7 @@ export function loadConfigSync(): IConfig {
       enabled: process.env.COMPRESSION_ENABLED !== 'false',
       threshold: parseFloat(process.env.COMPRESSION_THRESHOLD || '0.8'),
       maxCount: parseInt(process.env.COMPRESSION_MAX_COUNT || '5'),
-      maxTokens: parseInt(process.env.COMPRESSION_MAX_TOKENS || '1500'),
+      maxTokens: parseInt(process.env.COMPRESSION_MAX_TOKENS || '300'),
       model: process.env.COMPRESSION_MODEL,
       logging: process.env.COMPRESSION_LOGGING !== 'false',
       persist: process.env.COMPRESSION_PERSIST !== 'false'

@@ -68,3 +68,6 @@ src/generated/
 
 docs/*
 .md*
+
+todoist-express/
+plans/

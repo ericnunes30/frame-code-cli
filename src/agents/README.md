@@ -55,3 +55,14 @@ O grafo do agente é composto por:
 - **end**: Nó de finalização
 
 O sistema de skills influencia diretamente o nó **agent**, fornecendo contexto adicional através do prompt do sistema.
+
+## Fluxo multi-agent (supervisor + planner + executor)
+
+O code-cli suporta um fluxo hierarquico com tres agentes:
+
+- **Supervisor**: agente principal que decide quando delegar via call_flow.
+- **Planner**: gera o plano e grava em shared.plan.
+- **Executor**: executa o plano e retorna shared.output.
+
+O supervisor esta em src/agents/multi-agents/plan-executor/agentSupervisorFlow.ts e pode ser executado
+via o comando CLI multi-agent.
