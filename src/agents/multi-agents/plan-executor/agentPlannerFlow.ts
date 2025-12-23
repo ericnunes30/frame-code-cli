@@ -3,6 +3,7 @@ import {
   GraphStatus,
   type GraphNode,
   type IGraphState,
+  type Message,
   type AgentLLMConfig,
   createAgentFlowTemplate,
   createToolExecutorNode,
@@ -15,14 +16,25 @@ import { createCliContextHooks } from '../../../core/utils/cliContextHooks';
 import { logger } from '../../../core/services/logger';
 import { toolRegistry } from '../../../core/services/tools';
 import { loadConfig } from '../../../core/services/config';
+import { maybeAttachReadImageToContext } from '../../../core/utils/readImageAttachment';
+import { instrumentGraphForRawLlmOutput } from '../../../core/utils/llmRawOutputLogger';
 
 function buildLlmConfig(modelName: string | undefined, config: Awaited<ReturnType<typeof loadConfig>>): AgentLLMConfig {
-  const model = modelName || config.defaults?.model || 'gpt-4o-mini';
+  const supportsVision = config.vision?.supportsVision === true;
+  const model =
+    modelName ||
+    (supportsVision ? config.vision?.model : undefined) ||
+    config.defaults?.model ||
+    'gpt-4o-mini';
+  const provider = (supportsVision ? config.vision?.provider : undefined) || config.provider;
+  const apiKey = (supportsVision ? config.vision?.apiKey : undefined) || config.apiKey;
+  const baseUrl = (supportsVision ? config.vision?.baseURL : undefined) || config.baseURL;
   return {
     model,
-    provider: config.provider,
-    apiKey: config.apiKey,
-    baseUrl: config.baseURL,
+    provider,
+    apiKey,
+    baseUrl,
+    capabilities: { supportsVision },
     defaults: {
       maxTokens: config.defaults?.maxTokens,
       maxContextTokens: config.defaults?.maxContextTokens,
@@ -35,7 +47,7 @@ function getPlannerTools(mode: 'full' | 'final-only') {
   const baseConfig = getToolFilterConfig();
   return filterToolsByPolicy(
     toolRegistry.listTools(),
-    { allow: ['search', 'file_read', 'file_outline', 'list_directory', 'final_answer'] },
+    { allow: ['search', 'file_read', 'file_outline', 'list_directory', 'read_image', 'final_answer'] },
     {
       ...baseConfig,
       mode: 'autonomous',
@@ -70,9 +82,9 @@ export async function createPlannerFlowGraph(options?: {
   const llmConfig = buildLlmConfig(options?.modelName, config);
   const toolPolicy = options?.toolsMode === 'final-only'
     ? { allow: ['final_answer'] }
-    : { allow: ['search', 'file_read', 'file_outline', 'list_directory', 'final_answer'], allowAskUser: false };
+    : { allow: ['search', 'file_read', 'file_outline', 'list_directory', 'read_image', 'final_answer'], allowAskUser: false };
 
-  const allowedTools = new Set(['search', 'file_read', 'file_outline', 'list_directory', 'final_answer']);
+  const allowedTools = new Set(['search', 'file_read', 'file_outline', 'list_directory', 'read_image', 'final_answer']);
   const baseToolExecutorNode = createToolExecutorNode();
 
   const toolExecutorNode: GraphNode = async (state: IGraphState, engine) => {
@@ -100,7 +112,9 @@ export async function createPlannerFlowGraph(options?: {
     }
 
     try {
-      return await baseToolExecutorNode(state, engine);
+      const result = await baseToolExecutorNode(state, engine);
+      await maybeAttachReadImageToContext({ engine, metadata: (result as any).metadata, textPrefix: 'Imagem anexada para planejamento.' });
+      return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       engine.addMessage({
@@ -148,7 +162,28 @@ export async function createPlannerFlowGraph(options?: {
     };
   };
 
-  return createAgentFlowTemplate({
+  const seedInputNode: GraphNode = async (state: IGraphState): Promise<{ messages?: Message[] }> => {
+    const data = (state.data ?? {}) as Record<string, unknown>;
+    const shared = (data.shared ?? {}) as Record<string, unknown>;
+    const input = typeof (data as any).input === 'string' ? String((data as any).input) : '';
+    const imagePaths = Array.isArray(shared.imagePaths) ? (shared.imagePaths as string[]) : [];
+
+    const messages: Message[] = [];
+    if (imagePaths.length > 0) {
+      messages.push({
+        role: 'system',
+        content:
+          `Imagens disponiveis (paths locais):\n${imagePaths.map((p) => `- ${p}`).join('\n')}\n\nSe precisar enxergar, chame read_image com source=\"path\" e path do arquivo.`
+      });
+    }
+    if (input.trim().length > 0) {
+      messages.push({ role: 'user', content: input });
+    }
+
+    return messages.length > 0 ? { messages } : {};
+  };
+
+  const graph = createAgentFlowTemplate({
     agent: {
       llm: llmConfig,
       promptConfig: {
@@ -168,7 +203,7 @@ export async function createPlannerFlowGraph(options?: {
       maxTokens: config.defaults?.maxTokens
     },
     toolExecutor: toolExecutorNode,
-    hooks: { capture: capturePlanNode },
+    hooks: { seed: seedInputNode, capture: capturePlanNode },
     nodeIds: {
       reactValidation: 'validate',
       toolDetection: 'detect',
@@ -176,4 +211,7 @@ export async function createPlannerFlowGraph(options?: {
       capture: 'capturePlan'
     }
   });
+
+  instrumentGraphForRawLlmOutput(graph, 'Agente-Planner');
+  return graph;
 }

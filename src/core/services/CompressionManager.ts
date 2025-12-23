@@ -1,6 +1,7 @@
 import type { IGraphState } from 'frame-agent-sdk';
 import { ChatHistoryManager, TokenizerService } from 'frame-agent-sdk';
 import type { Message } from 'frame-agent-sdk';
+import { extractTextFromMessage } from 'frame-agent-sdk';
 import { LLMCompressionService } from './LLMCompressionService';
 import { logger } from './logger';
 import { loadConfig, loadConfigSync } from './config';
@@ -318,7 +319,7 @@ export class CompressionManager {
     const compressibleMessages = messages.filter((_, index) => !protectedIndices.has(index));
     
     return compressibleMessages
-      .map(msg => `[${msg.role.toUpperCase()}]: ${msg.content}`)
+      .map(msg => `[${msg.role.toUpperCase()}]: ${extractTextFromMessage(msg)}`)
       .join('\n\n');
   }
 

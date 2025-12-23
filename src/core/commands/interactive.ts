@@ -6,6 +6,7 @@ import { GraphStatus } from 'frame-agent-sdk';
 import { initializeTools } from '../services/tools';
 import { loadConfig } from '../services/config';
 import { createCliTelemetry } from '../telemetry';
+import { cleanupAttachmentsRoot, getAttachmentsCleanupConfigFromEnv, stageImageAttachments } from '../utils/attachments';
 
 /**
  * Comando interativo para chat com o agente
@@ -17,7 +18,9 @@ export function createInteractiveCommand(): Command {
 
   command
     .description('Iniciar modo interativo')
-    .action(async () => {
+    .option('--image <path>', 'Caminho de imagem local (pode repetir)', (value, previous: string[]) => [...(previous ?? []), value], [] as string[])
+    .option('--image-detail <low|high|auto>', 'Nivel de detalhe para imagem (low|high|auto)', 'auto')
+    .action(async (options?: { image?: string[]; imageDetail?: 'low' | 'high' | 'auto' }) => {
       try {
         if (interactiveExecuted) {
           return;
@@ -30,8 +33,29 @@ export function createInteractiveCommand(): Command {
         console.log('Modo Chat Interativo');
         console.log('Dica: Digite suas perguntas ou "sair" para encerrar');
         console.log('');
+        let imagePaths: string[] = [];
+        let runId: string | undefined;
+        const imageDetail = options?.imageDetail ?? 'auto';
+        if (options?.image && options.image.length > 0) {
+          await cleanupAttachmentsRoot(getAttachmentsCleanupConfigFromEnv());
+          const staged = await stageImageAttachments({ imagePaths: options.image });
+          runId = staged.runId;
+          imagePaths = staged.stagedPaths;
+        }
 
-        let currentState: any = { messages: [], data: {}, status: GraphStatus.RUNNING };
+        const imageHint =
+          imagePaths.length > 0
+            ? `Imagens disponiveis (paths locais):\n${imagePaths.map((p) => `- ${p}`).join('\n')}\n\nSe precisar enxergar, chame a tool read_image com source=\"path\" e path do arquivo.`
+            : '';
+
+        let currentState: any = {
+          messages: [...(imageHint ? [{ role: 'system', content: imageHint }] : [])],
+          data: {
+            ...(runId ? { runId } : {}),
+            ...(imagePaths.length ? { imagePaths, imageDetail } : {}),
+          },
+          status: GraphStatus.RUNNING
+        };
 
         const rl = readline.createInterface({
           input: process.stdin,
@@ -161,4 +185,3 @@ export function createInteractiveCommand(): Command {
 }
 
 export const interactiveCommand = createInteractiveCommand();
-

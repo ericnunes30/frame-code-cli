@@ -7,6 +7,7 @@ import { loadConfig } from '../services/config';
 import { createSupervisorEngine } from '../../agents/multi-agents/plan-executor/agentSupervisorFlow';
 import { readCliInput } from '../utils/readCliInput';
 import { createCliTelemetry } from '../telemetry';
+import { cleanupAttachmentsRoot, getAttachmentsCleanupConfigFromEnv, stageImageAttachments } from '../utils/attachments';
 
 export interface MultiAgentOptions {
   inputFile?: string;
@@ -14,6 +15,10 @@ export interface MultiAgentOptions {
   logFile?: string;
   verbose?: boolean;
   additionalInput?: string;
+  image?: string[];
+  imageDetail?: 'low' | 'high' | 'auto';
+  _runId?: string;
+  _imagePaths?: string[];
 }
 
 export async function processMultiAgentInput(input: string, options: MultiAgentOptions): Promise<string> {
@@ -48,11 +53,17 @@ export async function processMultiAgentInput(input: string, options: MultiAgentO
       telemetry
     });
 
+    const imagePaths = options._imagePaths ?? [];
+    const imageDetail = options.imageDetail ?? 'auto';
+
     const initialState = {
       messages: [],
       data: {
         input,
-        shared: {}
+        shared: {
+          ...(imagePaths.length ? { imagePaths, imageDetail } : {})
+        },
+        ...(options._runId ? { runId: options._runId } : {})
       },
       status: GraphStatus.RUNNING
     };
@@ -83,6 +94,10 @@ export async function processMultiAgentInput(input: string, options: MultiAgentO
 export function createMultiAgentCommand(): Command {
   const command = new Command('multi-agent');
 
+  const collect = (value: string, previous: string[]) => {
+    return [...(previous ?? []), value];
+  };
+
   command
     .description('Run multi-agent planner + implementer flow')
     .argument('[additional-input]', 'Additional text with priority over input file')
@@ -90,6 +105,8 @@ export function createMultiAgentCommand(): Command {
     .option('-o, --output-file <file>', 'Output file for response')
     .option('-l, --log-file <file>', 'Log file for details')
     .option('-v, --verbose', 'Verbose mode')
+    .option('--image <path>', 'Caminho de imagem local (pode repetir)', collect, [] as string[])
+    .option('--image-detail <low|high|auto>', 'Nivel de detalhe para imagem (low|high|auto)', 'auto')
     .action(async (additionalInput: string, options: MultiAgentOptions) => {
       try {
         if (options.inputFile) {
@@ -105,6 +122,13 @@ export function createMultiAgentCommand(): Command {
         }
 
         const input = await readCliInput({ inputFile: options.inputFile, additionalInput });
+
+        if (options.image && options.image.length > 0) {
+          await cleanupAttachmentsRoot(getAttachmentsCleanupConfigFromEnv());
+          const staged = await stageImageAttachments({ imagePaths: options.image });
+          options._runId = staged.runId;
+          options._imagePaths = staged.stagedPaths;
+        }
 
         const result = await processMultiAgentInput(input, options);
 

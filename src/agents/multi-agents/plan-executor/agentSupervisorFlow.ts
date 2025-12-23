@@ -25,13 +25,24 @@ import { loadConfig } from '../../../core/services/config';
 import { createPlannerFlowGraph } from './agentPlannerFlow';
 import { createImplementerFlowGraph } from './agentImplementerFlow';
 
+import { instrumentGraphForRawLlmOutput } from '../../../core/utils/llmRawOutputLogger';
+
 function buildLlmConfig(modelName: string | undefined, config: Awaited<ReturnType<typeof loadConfig>>): AgentLLMConfig {
-  const model = modelName || config.defaults?.model || 'gpt-4o-mini';
+  const supportsVision = config.vision?.supportsVision === true;
+  const model =
+    modelName ||
+    (supportsVision ? config.vision?.model : undefined) ||
+    config.defaults?.model ||
+    'gpt-4o-mini';
+  const provider = (supportsVision ? config.vision?.provider : undefined) || config.provider;
+  const apiKey = (supportsVision ? config.vision?.apiKey : undefined) || config.apiKey;
+  const baseUrl = (supportsVision ? config.vision?.baseURL : undefined) || config.baseURL;
   return {
     model,
-    provider: config.provider,
-    apiKey: config.apiKey,
-    baseUrl: config.baseURL,
+    provider,
+    apiKey,
+    baseUrl,
+    capabilities: { supportsVision },
     defaults: {
       maxTokens: config.defaults?.maxTokens,
       maxContextTokens: config.defaults?.maxContextTokens,
@@ -119,8 +130,40 @@ export async function createSupervisorFlowGraph(options?: {
       };
     }
 
+    let execState = state;
+    if (toolName === 'call_flow') {
+      const data = (state.data ?? {}) as Record<string, unknown>;
+      const shared = (data.shared ?? {}) as Record<string, unknown>;
+      const imagePaths = Array.isArray(shared.imagePaths) ? (shared.imagePaths as string[]) : [];
+      const imageDetail = typeof shared.imageDetail === 'string' ? shared.imageDetail : undefined;
+
+      if (imagePaths.length > 0) {
+        const params = (state.lastToolCall?.params ?? {}) as Record<string, unknown>;
+        const nextShared = {
+          ...(typeof params.shared === 'object' && params.shared ? (params.shared as Record<string, unknown>) : {}),
+          imagePaths,
+          ...(imageDetail ? { imageDetail } : {})
+        };
+
+        execState = {
+          ...state,
+          lastToolCall: {
+            ...(state.lastToolCall as any),
+            params: {
+              ...params,
+              shared: nextShared
+            }
+          }
+        };
+      }
+    }
+
     try {
-      const result = await baseToolExecutorNode(state, engine);
+      const result = await baseToolExecutorNode(execState, engine);
+
+      // If supervisor chose to read an image, attach it as multimodal content for the next LLM turn.
+
+
       if (toolName === 'call_flow') {
         const callMetadata = (result.metadata ?? {}) as { output?: unknown; flowId?: string; status?: string; patch?: unknown };
         const flowId = callMetadata.flowId ?? 'unknown';
@@ -237,7 +280,7 @@ export async function createSupervisorFlowGraph(options?: {
     };
   };
 
-  return createAgentFlowTemplate({
+  const graph = createAgentFlowTemplate({
     agent: {
       llm: llmConfig,
       promptConfig: {
@@ -262,7 +305,22 @@ export async function createSupervisorFlowGraph(options?: {
       seed: async (state) => {
         const inputText = extractInput(state);
         if (!inputText) return {};
-        return { messages: [{ role: 'user', content: inputText }] };
+
+        const data = (state.data ?? {}) as Record<string, unknown>;
+        const shared = (data.shared ?? {}) as Record<string, unknown>;
+        const imagePaths = Array.isArray(shared.imagePaths) ? (shared.imagePaths as string[]) : [];
+
+        const imageHint =
+          imagePaths.length > 0
+            ? `Imagens disponiveis (paths locais):\n${imagePaths.map((p) => `- ${p}`).join('\n')}\n\nSe precisar enxergar, delegue para subagentes (o subagente usará read_image).`
+            : '';
+
+        return {
+          messages: [
+            ...(imageHint ? [{ role: 'system', content: imageHint }] : []),
+            { role: 'user', content: inputText }
+          ]
+        };
       }
     },
     nodeIds: {
@@ -272,6 +330,9 @@ export async function createSupervisorFlowGraph(options?: {
       capture: 'captureFinal'
     }
   });
+
+  instrumentGraphForRawLlmOutput(graph, 'Agente-Supervisor');
+  return graph;
 }
 
 export async function createSupervisorEngine(options?: {

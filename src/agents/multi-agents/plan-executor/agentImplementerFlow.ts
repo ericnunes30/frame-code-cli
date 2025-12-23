@@ -17,14 +17,25 @@ import { createCliContextHooks } from '../../../core/utils/cliContextHooks';
 import { logger } from '../../../core/services/logger';
 import { toolRegistry } from '../../../core/services/tools';
 import { loadConfig } from '../../../core/services/config';
+import { maybeAttachReadImageToContext } from '../../../core/utils/readImageAttachment';
+import { instrumentGraphForRawLlmOutput } from '../../../core/utils/llmRawOutputLogger';
 
 function buildLlmConfig(modelName: string | undefined, config: Awaited<ReturnType<typeof loadConfig>>): AgentLLMConfig {
-  const model = modelName || config.defaults?.model || 'gpt-4o-mini';
+  const supportsVision = config.vision?.supportsVision === true;
+  const model =
+    modelName ||
+    (supportsVision ? config.vision?.model : undefined) ||
+    config.defaults?.model ||
+    'gpt-4o-mini';
+  const provider = (supportsVision ? config.vision?.provider : undefined) || config.provider;
+  const apiKey = (supportsVision ? config.vision?.apiKey : undefined) || config.apiKey;
+  const baseUrl = (supportsVision ? config.vision?.baseURL : undefined) || config.baseURL;
   return {
     model,
-    provider: config.provider,
-    apiKey: config.apiKey,
-    baseUrl: config.baseURL,
+    provider,
+    apiKey,
+    baseUrl,
+    capabilities: { supportsVision },
     defaults: {
       maxTokens: config.defaults?.maxTokens,
       maxContextTokens: config.defaults?.maxContextTokens,
@@ -82,8 +93,16 @@ export async function createImplementerFlowGraph(options?: {
     const inputText = extractInput(state);
     const shared = (state.data as { shared?: Record<string, unknown> } | undefined)?.shared;
     const planText = typeof shared?.plan === 'string' ? shared.plan : shared?.plan ? JSON.stringify(shared.plan) : '';
+    const imagePaths = Array.isArray(shared?.imagePaths) ? (shared?.imagePaths as string[]) : [];
 
     const messages: Message[] = [];
+    if (imagePaths.length > 0) {
+      messages.push({
+        role: 'system',
+        content:
+          `Imagens disponiveis (paths locais):\n${imagePaths.map((p) => `- ${p}`).join('\n')}\n\nSe precisar enxergar, chame read_image com source=\"path\" e path do arquivo.`
+      });
+    }
     if (planText) {
       messages.push({
         role: 'system',
@@ -126,7 +145,9 @@ export async function createImplementerFlowGraph(options?: {
     }
 
     try {
-      return await baseToolExecutorNode(state, engine);
+      const result = await baseToolExecutorNode(state, engine);
+      await maybeAttachReadImageToContext({ engine, metadata: (result as any).metadata, textPrefix: 'Imagem anexada para execuçāo.' });
+      return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       engine.addMessage({
@@ -173,7 +194,7 @@ export async function createImplementerFlowGraph(options?: {
     };
   };
 
-  return createAgentFlowTemplate({
+  const graph = createAgentFlowTemplate({
     agent: {
       llm: llmConfig,
       promptConfig: {
@@ -201,4 +222,7 @@ export async function createImplementerFlowGraph(options?: {
       capture: 'captureOutput'
     }
   });
+
+  instrumentGraphForRawLlmOutput(graph, 'Agente-Executor');
+  return graph;
 }

@@ -6,6 +6,13 @@ export interface IConfig {
   provider: string;
   apiKey: string;
   baseURL?: string;
+  vision?: {
+    supportsVision?: boolean;
+    provider?: string;
+    apiKey?: string;
+    baseURL?: string;
+    model?: string;
+  };
   defaults?: {
     model?: string;
     maxTokens?: number; // Output tokens por call
@@ -56,6 +63,13 @@ export async function loadConfig(): Promise<IConfig> {
     provider: process.env.LLM_PROVIDER || 'openai',
     apiKey: process.env.LLM_API_KEY || '',
     baseURL: process.env.LLM_BASE_URL,
+    vision: {
+      supportsVision: process.env.LLM_SUPPORTS_VISION === 'true',
+      provider: process.env.LLM_VISION_PROVIDER || process.env.LLM_PROVIDER || 'openai',
+      apiKey: process.env.LLM_VISION_API_KEY || process.env.LLM_API_KEY || '',
+      baseURL: process.env.LLM_VISION_BASE_URL || process.env.LLM_BASE_URL,
+      model: process.env.LLM_VISION_MODEL || process.env.LLM_DEFAULT_MODEL
+    },
     defaults: {
       model: process.env.LLM_DEFAULT_MODEL || 'gpt-4o-mini',
       maxTokens: parseInt(process.env.LLM_MAX_OUTPUT_TOKENS || '4096'), // Output por call
