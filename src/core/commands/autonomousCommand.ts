@@ -7,6 +7,7 @@ import { initializeTools } from '../services/tools';
 import { loadConfig } from '../services/config';
 import { readCliInput } from '../utils/readCliInput';
 import { createCliTelemetry } from '../telemetry';
+import { cleanupAttachmentsRoot, getAttachmentsCleanupConfigFromEnv, stageImageAttachments } from '../utils/attachments';
 
 export interface AutonomousOptions {
   inputFile?: string;
@@ -14,6 +15,10 @@ export interface AutonomousOptions {
   logFile?: string;
   verbose?: boolean;
   additionalInput?: string;
+  image?: string[];
+  imageDetail?: 'low' | 'high' | 'auto';
+  _runId?: string;
+  _imagePaths?: string[];
 }
 
 /**
@@ -39,10 +44,24 @@ export async function processAutonomousInput(input: string, options: AutonomousO
       traceContext: { agent: { label: 'Agente' } }
     });
 
+    const imagePaths = options._imagePaths ?? [];
+    const imageDetail = options.imageDetail ?? 'auto';
+
+    const imageHint =
+      imagePaths.length > 0
+        ? `Imagens disponiveis (paths locais):\n${imagePaths.map((p) => `- ${p}`).join('\n')}\n\nSe precisar enxergar, chame a tool read_image com source=\"path\" e path do arquivo.`
+        : '';
+
     // Estado inicial
     const initialState = {
-      messages: [{ role: 'user', content: input }],
-      data: {},
+      messages: [
+        ...(imageHint ? [{ role: 'system', content: imageHint }] : []),
+        { role: 'user', content: input }
+      ],
+      data: {
+        ...(options._runId ? { runId: options._runId } : {}),
+        ...(imagePaths.length ? { imagePaths, imageDetail } : {})
+      },
       status: GraphStatus.RUNNING
     };
 
@@ -66,7 +85,7 @@ export async function processAutonomousInput(input: string, options: AutonomousO
       }
     }
 
-    const lastAssistantMessage = result.state.messages
+    const lastAssistantMessage: any = result.state.messages
       .filter((msg: any) => msg.role === 'assistant')
       .pop();
 
@@ -83,6 +102,10 @@ export async function processAutonomousInput(input: string, options: AutonomousO
 export function createAutonomousCommand(): Command {
   const command = new Command('autonomous');
 
+  const collect = (value: string, previous: string[]) => {
+    return [...(previous ?? []), value];
+  };
+
   command
     .description('Executar frame-code-cli em modo autÃ´nomo sem interaÃ§Ã£o humana')
     .argument('[additional-input]', 'Texto adicional com prioridade sobre o arquivo de entrada')
@@ -90,12 +113,21 @@ export function createAutonomousCommand(): Command {
     .option('-o, --output-file <file>', 'Arquivo de saÃ­da para a resposta')
     .option('-l, --log-file <file>', 'Arquivo de log detalhado')
     .option('-v, --verbose', 'Modo verboso com logs detalhados')
+    .option('--image <path>', 'Caminho de imagem local (pode repetir)', collect, [] as string[])
+    .option('--image-detail <low|high|auto>', 'Nivel de detalhe para imagem (low|high|auto)', 'auto')
     .action(async (additionalInput: string, options: AutonomousOptions) => {
       try {
         // Carregar configuraÃ§Ã£o
         await loadConfig();
 
         const input = await readCliInput({ inputFile: options.inputFile, additionalInput });
+
+        if (options.image && options.image.length > 0) {
+          await cleanupAttachmentsRoot(getAttachmentsCleanupConfigFromEnv());
+          const staged = await stageImageAttachments({ imagePaths: options.image });
+          options._runId = staged.runId;
+          options._imagePaths = staged.stagedPaths;
+        }
 
         // Ler input do arquivo primeiro
 
@@ -147,4 +179,3 @@ export function createAutonomousCommand(): Command {
 
   return command;
 }
-

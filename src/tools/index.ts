@@ -18,3 +18,4 @@ export const fileCreateTool = FileCreateTool;
 export { fileOutlineTool } from './file-outline';
 export { listSkillsTool, enableSkillTool } from './skills';
 export { listDirectoryTool } from './list-directory';
+export { readImageTool } from './read-image';

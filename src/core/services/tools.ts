@@ -8,7 +8,8 @@ import {
   fileOutlineTool,
   listSkillsTool,
   enableSkillTool,
-  listDirectoryTool
+  listDirectoryTool,
+  readImageTool
 } from '../../tools';
 import { registerMcpTools } from '../../tools/mcp/register';
 import { logger } from './logger';
@@ -41,6 +42,7 @@ export async function initializeTools(options?: { allowAskUser?: boolean }): Pro
   const allTools: ITool[] = [
     searchTool,
     listDirectoryTool,
+    readImageTool,
     fileCreateTool,
     fileEditTool,
     fileReadTool,
