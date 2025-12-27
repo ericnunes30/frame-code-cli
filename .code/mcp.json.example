@@ -1,0 +1,156 @@
+{
+  "_comment": "Exemplo de configuração de MCPs via .code/mcp.json",
+  "_comment_usage": "Copie este arquivo para .code/mcp.json e ajuste conforme necessário",
+  "_comment_env": "Variáveis de ambiente usam sintaxe ${VAR} como no GitHub Actions",
+  "mcps": [
+    {
+      "_comment": "GitHub MCP - Oficial",
+      "id": "github-official",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "namespace": "github",
+      "name": "GitHub MCP",
+      "version": "0.1.0",
+      "container": "github-mcp-server",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Qdrant MCP - Vector Search",
+      "id": "qdrant-official",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "frame-qdrant-mcp-server",
+        "uvx",
+        "mcp-server-qdrant",
+        "--transport",
+        "stdio"
+      ],
+      "namespace": "qdrant",
+      "name": "Qdrant MCP Server",
+      "version": "0.8.1",
+      "container": "frame-qdrant-mcp-server",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Neo4j MCP - Graph Database",
+      "id": "neo4j-official",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "frame-neo4j-mcp-server",
+        "/app/neo4j-mcp",
+        "--neo4j-uri",
+        "bolt://host.docker.internal:7687",
+        "--neo4j-username",
+        "neo4j",
+        "--neo4j-password",
+        "ucKrVdmX2nD1Q3RQ",
+        "--neo4j-database",
+        "neo4j",
+        "--neo4j-read-only",
+        "false",
+        "--neo4j-telemetry",
+        "false"
+      ],
+      "namespace": "neo4j",
+      "name": "Neo4j MCP Server",
+      "version": "1.1.0",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Context7 MCP",
+      "id": "context7",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "${MCP_CONTAINER:-context7-mcp}",
+        "${MCP_COMMAND:-context7-mcp}"
+      ],
+      "namespace": "context7",
+      "name": "MCP Server",
+      "version": "1.0.0",
+      "container": "${MCP_CONTAINER:-context7-mcp}",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Chrome DevTools MCP - Oculto da lista, auto-registrado para chrome agent",
+      "id": "chrome-devtools",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "${CHROME_MCP_CONTAINER:-chrome-devtools-mcp-server}",
+        "chrome-devtools-mcp",
+        "-u",
+        "http://chrome-browser:9222"
+      ],
+      "namespace": "chrome",
+      "name": "Chrome DevTools MCP Server",
+      "version": "1.0.0",
+      "container": "${CHROME_MCP_CONTAINER:-chrome-devtools-mcp-server}",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Exemplo de MCP personalizado",
+      "id": "example-mcp",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["./my-mcp-server.js"],
+      "namespace": "example",
+      "name": "Example MCP",
+      "version": "1.0.0",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Exemplo com variáveis de ambiente",
+      "id": "mcp-with-env",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["./server.js"],
+      "namespace": "custom",
+      "name": "MCP with Environment Variables",
+      "env": {
+        "API_KEY": "${MY_API_KEY}",
+        "ENDPOINT": "${API_ENDPOINT:-https://api.example.com}"
+      },
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    }
+  ]
+}
