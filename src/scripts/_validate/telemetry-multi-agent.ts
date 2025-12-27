@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { processMultiAgentInput } from '../../core/commands/multiAgentCommand';
+import { processMultiAgentInput } from '../../cli/commands/multi-agent';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(`ASSERTION FAILED: ${message}`);

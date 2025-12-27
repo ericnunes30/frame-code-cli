@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { processAutonomousInput } from '../../core/commands/autonomousCommand';
+import { processAutonomousInput } from '../../cli/commands/autonomous';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(`ASSERTION FAILED: ${message}`);

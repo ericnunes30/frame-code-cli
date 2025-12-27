@@ -1,0 +1,71 @@
+{
+  "_comment": "Exemplo de configuração de MCPs via .code/mcp.json",
+  "_comment_usage": "Copie este arquivo para .code/mcp.json e ajuste conforme necessário",
+  "_comment_env": "Variáveis de ambiente usam sintaxe ${VAR} como no GitHub Actions",
+  "mcps": [
+    {
+      "_comment": "GitHub MCP - Oficial",
+      "id": "github-official",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "namespace": "github",
+      "name": "GitHub MCP",
+      "version": "0.1.0",
+      "container": "github-mcp-server",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Context7 MCP",
+      "id": "context7",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "${MCP_CONTAINER:-context7-mcp}",
+        "${MCP_COMMAND:-context7-mcp}"
+      ],
+      "namespace": "context7",
+      "name": "MCP Server",
+      "version": "1.0.0",
+      "container": "${MCP_CONTAINER:-context7-mcp}",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    },
+    {
+      "_comment": "Chrome DevTools MCP - Oculto da lista, auto-registrado para chrome agent",
+      "id": "chrome-devtools",
+      "transport": "stdio",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "${CHROME_MCP_CONTAINER:-chrome-devtools-mcp-server}",
+        "chrome-devtools-mcp",
+        "-u",
+        "http://172.23.0.2:9222"
+      ],
+      "namespace": "chrome",
+      "name": "Chrome DevTools MCP Server",
+      "version": "1.0.0",
+      "container": "${CHROME_MCP_CONTAINER:-chrome-devtools-mcp-server}",
+      "mcp": {
+        "enable": true,
+        "excludeFromList": false
+      }
+    }
+  ]
+}

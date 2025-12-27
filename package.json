@@ -15,10 +15,12 @@
   },
   "homepage": "https://github.com/ericnunes/frame-code-cli#readme",
   "scripts": {
-    "build": "npm run build:skill-registry && tsc && npm run copy:prompts",
-    "copy:prompts": "cpy \"src/prompts/**/*\" dist/prompts --parents",
+    "build": "tsc",
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
+    "autonomous": "node dist/index.js autonomous",
+    "multi-agent": "node dist/index.js multi-agent",
+    "test:mcp": "ts-node scripts/test-mcp.ts",
     "interactive": "chmod +x src/scripts/capture-logs.sh && src/scripts/capture-logs.sh npm run dev interactive",
     "dev:logs": "bash src/scripts/capture-logs.sh npm run dev interactive",
     "dev:start": "npm run dev interactive",
@@ -26,7 +28,7 @@
     "log:clear": "rm -f server.log",
     "log:stats": "ls -la server.log",
     "clean": "rm -rf dist",
-    "build:skill-registry": "ts-node --transpile-only src/scripts/buildSkillRegistry.ts"
+    "test:supervisor": "ts-node --transpile-only src/scripts/test-supervisor.ts"
   },
   "keywords": [
     "cli",

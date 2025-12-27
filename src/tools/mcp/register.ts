@@ -1,32 +1,41 @@
 import { MCPBase, toolRegistry } from 'frame-agent-sdk';
-import { logger } from '../../core/services/logger';
-import { context7McpConfig } from './context7-mcp-config';
-import { chromeMcpConfig } from './chrome-mcp-config';
-import { githubMcpConfig } from './github-mcp-config';
-import { qdrantMcpConfig } from './qdrant-mcp-config';
-import { neo4jMcpConfig } from './neo4j-mcp-config';
+import { logger } from '../../infrastructure/logging/logger';
+import { McpLoader, IMcpMetadata } from './loader';
+
+/**
+ * Obtém configuração de MCP por ID (usando McpLoader)
+ */
+function getMcpConfigById(id: string): any {
+  const loader = new McpLoader();
+  const metadata = loader.getMcpById(id);
+  return metadata?.config;
+}
 
 export async function registerMcpTools(): Promise<void> {
-  // Registrar MCP principal
-  // await registerSingleMcp(context7McpConfig, 'principal');
+  const loader = new McpLoader();
+  const configs = loader.loadRegisteredMcpConfigs();
 
-  // Registrar Chrome MCP
-  // await registerSingleMcp(chromeMcpConfig, 'Chrome DevTools');
-  
-  // Registrar GitHub MCP
-  // await registerSingleMcp(githubMcpConfig, 'GitHub');
-  
-  // Registrar Qdrant MCP
-  // await registerSingleMcp(qdrantMcpConfig, 'Qdrant Vector Search');
-  
-  // Registrar Neo4j MCP
-  logger.info('Registrando Neo4j MCP...');
-  try {
-    await registerSingleMcp(neo4jMcpConfig, 'Neo4j Graph Database');
-    logger.info('Neo4j MCP registrado com sucesso!');
-  } catch (error) {
-    logger.error('Erro ao registrar Neo4j MCP:', error);
+  let registeredCount = 0;
+  let skippedCount = 0;
+
+  for (const metadata of configs) {
+    const config = metadata.config;
+
+    if (!metadata.registered) {
+      logger.info(`[registerMcpTools] MCP "${metadata.name}" (${metadata.id}) NÃO registrado (enable=false).`);
+      skippedCount++;
+      continue;
+    }
+
+    try {
+      await registerSingleMcp(config, config.name || config.id);
+      registeredCount++;
+    } catch (error) {
+      logger.error(`[registerMcpTools] Erro ao registrar MCP "${metadata.name}":`, error);
+    }
   }
+
+  logger.info(`[registerMcpTools] ${registeredCount} MCPs registrados, ${skippedCount} pulados.`);
 }
 
 async function registerSingleMcp(config: any, name: string): Promise<void> {
@@ -37,23 +46,45 @@ async function registerSingleMcp(config: any, name: string): Promise<void> {
     await mcp.connect();
 
     logger.info(`Criando ferramentas para ${name}...`);
-    const tools = await mcp.createTools();
-    logger.info(`Ferramentas criadas para ${name}: ${tools.length}`);
-    
-    if (!tools.length) {
+
+    // Criar aliases sem o prefixo mcp:namespace/ para facilitar uso pelo LLM
+    // Ex: mcp:chrome/navigate_page -> navigate_page
+    const tools = await mcp.createTools({
+      alias: {}
+    });
+
+    // Criar mapeamento de aliases: nome completo -> nome simples
+    const aliasMap: Record<string, string> = {};
+    tools.forEach((tool: any) => {
+      const fullName = tool.name;
+      const shortName = fullName.replace(`mcp:${config.namespace}/`, '');
+      aliasMap[fullName] = shortName;
+    });
+
+    // Recriar tools com aliases
+    const toolsWithAlias = await mcp.createTools({ alias: aliasMap });
+
+    logger.info(`Ferramentas criadas para ${name}: ${toolsWithAlias.length}`);
+
+    if (!toolsWithAlias.length) {
       logger.warn(`Nenhuma ferramenta MCP encontrada para ${name}`);
       return;
     }
 
-    logger.info(`Registrando ${tools.length} ferramentas para ${name}...`);
-    logger.info(`Registrando ${tools.length} ferramentas para ${name}...`);
-    tools.forEach((tool: any) => {
+    logger.info(`Registrando ${toolsWithAlias.length} ferramentas para ${name}...`);
+    toolsWithAlias.forEach((tool: any) => {
       logger.info(`Registrando ferramenta: ${tool.name}`);
+
+      // Adicionar metadata de rastreamento do MCP
+      // O prefixo mcp:namespace/ foi removido via alias para facilitar uso
+      (tool as any)._mcpNamespace = config.namespace;
+      (tool as any)._mcpId = config.id;
+
       toolRegistry.register(tool);
       logger.debug(`Registrada ferramenta MCP (${name}): ${tool.name}`);
     });
 
-    logger.info(`✅ ${tools.length} ferramentas MCP registradas (${name}): ${tools.map((t: any) => t.name).join(', ')}`);
+    logger.info(`✅ ${toolsWithAlias.length} ferramentas MCP registradas (${name}): ${toolsWithAlias.map((t: any) => t.name).join(', ')}`);
   } catch (error: any) {
     logger.error(`❌ Falha crítica ao registrar ferramentas MCP (${name}): ${error.message}`);
     logger.debug('Stack trace:', error.stack);
@@ -66,20 +97,26 @@ async function registerSingleMcp(config: any, name: string): Promise<void> {
 
 // Função específica para registrar apenas o Chrome MCP
 export async function registerChromeMcp(): Promise<void> {
-  await registerSingleMcp(chromeMcpConfig, 'Chrome DevTools');
+  const config = getMcpConfigById('chrome-devtools');
+  if (!config) {
+    throw new Error('Chrome MCP not found in .code/mcp.json');
+  }
+  await registerSingleMcp(config, config.name || config.id);
 }
 
 // Função para verificar se o container Chrome MCP está rodando
 export async function isChromeMcpRunning(): Promise<boolean> {
   try {
-    const { execSync } = require('child_process');
-    const containerName = chromeMcpConfig.capabilities?.['docker-container'] || 'chrome-devtools-mcp-server';
+    const config = getMcpConfigById('chrome-devtools');
+    if (!config) return false;
 
+    const containerName = config.container || config.capabilities?.['docker-container'] || 'chrome-devtools-mcp-server';
+    const { execSync } = require('child_process');
     execSync(`docker ps --filter name=${containerName} --format "{{.Names}}"`, { stdio: 'pipe' });
     logger.debug(`Container ${containerName} está rodando`);
     return true;
   } catch (error) {
-    logger.debug(`Container ${chromeMcpConfig.capabilities?.['docker-container'] || 'chrome-devtools-mcp-server'} não está rodando`);
+    logger.debug(`Container chrome-devtools-mcp-server não está rodando`);
     return false;
   }
 }
@@ -107,14 +144,16 @@ export async function startChromeMcp(): Promise<void> {
 // Função para verificar se o container GitHub MCP está rodando
 export async function isGitHubMcpRunning(): Promise<boolean> {
   try {
-    const { execSync } = require('child_process');
-    const containerName = githubMcpConfig.capabilities?.['docker-container'] || 'github-mcp-server';
+    const config = getMcpConfigById('github-official');
+    if (!config) return false;
 
+    const containerName = config.container || 'github-mcp-server';
+    const { execSync } = require('child_process');
     execSync(`docker ps --filter name=${containerName} --format "{{.Names}}"`, { stdio: 'pipe' });
     logger.debug(`Container ${containerName} está rodando`);
     return true;
   } catch (error) {
-    logger.debug(`Container ${githubMcpConfig.capabilities?.['docker-container'] || 'github-mcp-server'} não está rodando`);
+    logger.debug(`Container github-mcp-server não está rodando`);
     return false;
   }
 }
@@ -122,14 +161,15 @@ export async function isGitHubMcpRunning(): Promise<boolean> {
 // Função para iniciar o GitHub MCP via Docker
 export async function startGitHubMcp(): Promise<void> {
   try {
-    const { execSync } = require('child_process');
-    
-    logger.info('Iniciando GitHub MCP via Docker...');
-    
-    // Montar o comando Docker a partir da configuração
-    const command = `docker ${githubMcpConfig.args.join(' ')}`;
-    execSync(command, { stdio: 'inherit' });
+    const config = getMcpConfigById('github-official');
+    if (!config) {
+      throw new Error('GitHub MCP not found in .code/mcp.json');
+    }
 
+    const { execSync } = require('child_process');
+    logger.info('Iniciando GitHub MCP via Docker...');
+    const command = `docker ${(config.args||[]).join(' ')}`;
+    execSync(command, { stdio: 'inherit' });
     logger.info('✅ GitHub MCP iniciado com sucesso');
   } catch (error: any) {
     logger.error(`❌ Falha ao iniciar GitHub MCP: ${error.message}`);
@@ -140,14 +180,15 @@ export async function startGitHubMcp(): Promise<void> {
 // Função para verificar se o container Qdrant MCP está rodando
 export async function isQdrantMcpRunning(): Promise<boolean> {
   try {
-    const { execSync } = require('child_process');
-    const dbContainerName = 'frame-qdrant-db';
-    const mcpContainerName = qdrantMcpConfig.capabilities?.['docker-container'] || 'frame-qdrant-mcp-server';
+    const config = getMcpConfigById('qdrant-official');
+    if (!config) return false;
 
-    // Verificar se ambos os containers estão rodando
+    const mcpContainerName = config.container || 'frame-qdrant-mcp-server';
+    const dbContainerName = 'frame-qdrant-db';
+
+    const { execSync } = require('child_process');
     execSync(`docker ps --filter name=${dbContainerName} --format "{{.Names}}"`, { stdio: 'pipe' });
     execSync(`docker ps --filter name=${mcpContainerName} --format "{{.Names}}"`, { stdio: 'pipe' });
-    
     logger.debug(`Containers Qdrant (${dbContainerName}) e MCP (${mcpContainerName}) estão rodando`);
     return true;
   } catch (error) {
@@ -201,7 +242,11 @@ export async function stopQdrantMcp(): Promise<void> {
 
 // Função para registrar apenas o Qdrant MCP
 export async function registerQdrantMcp(): Promise<void> {
-  await registerSingleMcp(qdrantMcpConfig, 'Qdrant Vector Search');
+  const config = getMcpConfigById('qdrant-official');
+  if (!config) {
+    throw new Error('Qdrant MCP not found in .code/mcp.json');
+  }
+  await registerSingleMcp(config, config.name || config.id);
 }
 
 // Função para verificar se o container Neo4j MCP está rodando
@@ -268,5 +313,9 @@ export async function stopNeo4jMcp(): Promise<void> {
 
 // Função para registrar apenas o Neo4j MCP
 export async function registerNeo4jMcp(): Promise<void> {
-  await registerSingleMcp(neo4jMcpConfig, 'Neo4j Graph Database');
+  const config = getMcpConfigById('neo4j-official');
+  if (!config) {
+    throw new Error('Neo4j MCP not found in .code/mcp.json');
+  }
+  await registerSingleMcp(config, config.name || config.id);
 }
