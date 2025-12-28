@@ -81,10 +81,10 @@ export async function processMultiAgentInput(input: string, options: MultiAgentO
     const shared = (result.state.data as { shared?: Record<string, unknown> } | undefined)?.shared;
     const output = shared?.output;
     if (typeof output === 'string' && output.trim().length > 0) {
-      return output;
+      return `[supervisor] ${output}`;
     }
 
-    return 'Execution finished without captured output';
+    return '[supervisor] Execution finished without captured output';
   } catch (error) {
     logger.error('[MultiAgent] Execution failed:', error);
     throw error;

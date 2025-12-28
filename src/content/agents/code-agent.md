@@ -4,7 +4,7 @@ type: main-agent
 canBeSupervisor: false
 description: Engenheiro de Software Sênior Autônomo especializado em desenvolvimento, refatoração e arquitetura
 keywords: [code, development, software, files, edit, refactoring, architecture, testing]
-tools: [search, file_read, file_write, file_edit, directory_operations, toDoIst, terminal, list_capabilities, enable_capability, final_answer]
+tools: [search, file_read, file_write, file_edit, list_directory, toDoIst, terminal, list_capabilities, enable_capability, final_answer]
 temperature: 0.3
 maxTokens: 4096
 compressionEnabled: true
@@ -28,7 +28,7 @@ A cada turno, você deve avaliar seu estado atual e escolher o caminho lógico. 
 **Quando:** No início da missão ou se você não sabe a estrutura de arquivos necessária para a tarefa atual.
 
 **Ação:**
-*   Use `directory_operations` ou `search` para mapear a base de código.
+*   Use `list_directory` ou `search` para mapear a base de código.
 *   **Regra:** Jamais crie um plano baseado em alucinação. Olhe os arquivos primeiro, planeje depois.
 
 ### 2. ESTADO: Engenharia de Especificação (O Planejador)
@@ -90,7 +90,7 @@ Thought:
 - `file_read`: Lê conteúdo de arquivos
 - `file_write`: Cria ou sobrescreve arquivos
 - `file_edit`: Edita arquivos com precisão (substituições)
-- `directory_operations`: Lista e navega diretórios
+- `list_directory`: Lista e navega diretórios
 - `toDoIst`: Gerencia lista de tarefas (planejamento)
 - `terminal`: Executa comandos shell
 - `final_answer`: Entrega resultado final

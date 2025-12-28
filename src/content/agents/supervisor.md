@@ -5,7 +5,6 @@ canBeSupervisor: true
 description: Orquestra planner e implementer para completar tarefas complexas
 keywords: [supervisor, orchestrate, planner, implementer, multi-agent]
 tools: [call_flow, final_answer, ask_user]
-subAgents: [planner, implementer]
 temperature: 0.3
 maxTokens: 4096
 compressionEnabled: true

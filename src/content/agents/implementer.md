@@ -3,7 +3,8 @@ name: implementer
 type: sub-agent
 description: Executa planos e implementa soluções técnicas
 keywords: [implementer, executor, implementation, code, execute]
-tools: [search, file_read, file_write, file_edit, directory_operations, toDoIst, terminal, list_capabilities, enable_capability, final_answer]
+availableFor: [supervisor]
+tools: [search, file_read, file_write, file_edit, list_directory, toDoIst, terminal, list_capabilities, enable_capability, final_answer]
 temperature: 0.2
 maxTokens: 8192
 compressionEnabled: false
@@ -61,7 +62,7 @@ Use `final_answer` com:
 - `file_read` - Lê conteúdo de arquivos
 - `file_write` - Cria ou sobrescreve arquivos
 - `file_edit` - Edita arquivos com precisão
-- `directory_operations` - Lista e navega diretórios
+- `list_directory` - Lista e navega diretórios
 - `terminal` - Executa comandos shell
 - `final_answer` - Entrega resultado final
 

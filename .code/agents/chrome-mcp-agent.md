@@ -1,9 +1,10 @@
 ---
 name: chrome-mcp-agent
-type: main-agent
+type: sub-agent
 canBeSupervisor: false
 description: Especialista em automação de navegador e debugging usando Chrome DevTools Protocol
 keywords: [chrome, browser, automation, debugging, devtools, web]
+availableFor: [supervisor]
 tools: [chrome-devtools, final_answer]
 temperature: 0.3
 maxTokens: 4096

@@ -6,7 +6,7 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 $header = "=== New session - $(Get-Date) ==="
 Write-Host "Starting capture in: $logFile"
-Write-Host "Command: $(if ($args.Count -eq 0) { 'npm run dev -- multi-agent ""Analise a imagem em ./4V4A0668.JPG""' } else { $args -join ' ' })"
+Write-Host "Command: $(if ($args.Count -eq 0) { 'npm run dev -- multi-agent ""Temos alguns containers dockers rodando deste projeto do manager-group e precisamos descobrir as urls (localhost) para podermos testar o frontend com o agente chrome-mcp""' } else { $args -join ' ' })"
 Write-Host "Stop with: Ctrl+C"
 Write-Host ""
 
@@ -20,7 +20,7 @@ $header | Out-File -FilePath $logFile -Encoding UTF8
 
 # Executar comando e capturar saída
 if ($args.Count -eq 0) {
-    $cmd = 'npm run dev -- multi-agent "Analise a imagem em G:\novosApps\agentes_test\frame-code-cli\a490b9398a.webp"'
+    $cmd = 'npm run dev -- multi-agent "Temos alguns containers dockers rodando deste projeto do manager-group e precisamos descobrir as urls (localhost) para podermos testar o frontend com o agente chrome-mcp"'
 } else {
     $raw = ($args -join ' ').Trim()
     if ($raw -like 'npm *') {

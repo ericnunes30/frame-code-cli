@@ -107,11 +107,18 @@ export const REACT_AGENT_FLOW: GraphDefinition = {
 
         /**
          * detect → execute, end ou agent
+         * - Se há erro de validação de tool → agent (loop de correção)
          * - Se há tool call e é final_answer/ask_user → end
          * - Se há tool call normal → execute
          * - Se não há tool call → end
          */
         detect: (state: IGraphState) => {
+            // Se há erro de validação de tool, voltar ao agent para correção
+            const validationError = (state.metadata as any)?.validation?.error;
+            if (validationError) {
+                return 'agent';  // Loop de correção
+            }
+
             const hasToolCall = !!state.lastToolCall;
 
             if (hasToolCall) {
