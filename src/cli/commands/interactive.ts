@@ -18,9 +18,10 @@ export function createInteractiveCommand(): Command {
 
   command
     .description('Iniciar modo interativo')
+    .option('--agent <name>', 'Agente a usar (ex: supervisor, chrome-mcp-agent, code-agent)', 'chrome-mcp-agent')
     .option('--image <path>', 'Caminho de imagem local (pode repetir)', (value, previous: string[]) => [...(previous ?? []), value], [] as string[])
     .option('--image-detail <low|high|auto>', 'Nivel de detalhe para imagem (low|high|auto)', 'auto')
-    .action(async (options?: { image?: string[]; imageDetail?: 'low' | 'high' | 'auto' }) => {
+    .action(async (options?: { agent?: string; image?: string[]; imageDetail?: 'low' | 'high' | 'auto' }) => {
       try {
         if (interactiveExecuted) {
           return;
@@ -72,14 +73,14 @@ export function createInteractiveCommand(): Command {
 
         // Obter agente do registro
         const registry = AgentRegistry.getInstance();
-        const agentName = getDefaultAgent('chrome-mcp-agent');
+        const agentName = getDefaultAgent(options?.agent);
 
         const graph = await registry.createEngine(agentName, {
           trace,
           telemetry
         });
 
-        console.log('ðŸ¤– Agente pronto!');
+        console.log('Agente pronto!');
         console.log('');
 
         const processQuestion = async (question: string) => {
@@ -101,24 +102,10 @@ export function createInteractiveCommand(): Command {
             currentState.status = result.state.status;
 
             if (result.status === GraphStatus.FINISHED) {
-              const lastToolCall = (currentState as any).lastToolCall as any;
-              if (lastToolCall?.toolName === 'final_answer') {
-                const answer = lastToolCall?.params?.answer;
-                if (typeof answer === 'string' && answer.trim().length > 0) {
-                  console.log('\nðŸ¤– ' + answer);
-                  return;
-                }
-              }
-
-              const lastAssistantMessage = currentState.messages
-                .filter((msg: any) => msg.role === 'assistant')
-                .pop();
-
-              if (lastAssistantMessage) {
-                console.log('\nðŸ¤– ' + lastAssistantMessage.content);
-              }
+              // A resposta já é mostrada pelo trace/telemetry, não precisamos duplicar
+              // Apenas verificamos se terminou com sucesso
             } else if (result.status === GraphStatus.ERROR) {
-              console.log('\nâŒ Erro na execuÃ§Ã£o: ' + (currentState.logs?.join('\n') || 'Erro desconhecido'));
+              console.log('\n❌ Erro na execução: ' + (currentState.logs?.join('\n') || 'Erro desconhecido'));
             }
 
           } catch (error) {
@@ -136,7 +123,7 @@ export function createInteractiveCommand(): Command {
 
           promptActive = true;
 
-          rl.question('VocÃª: ', async (input: string) => {
+          rl.question('Você: ', async (input: string) => {
             promptActive = false; // Liberar flag no inÃ­cio do handler
             const trimmedInput = input.trim();
 
@@ -145,7 +132,7 @@ export function createInteractiveCommand(): Command {
               trimmedInput.toLowerCase() === 'exit' ||
               trimmedInput.toLowerCase() === 'quit'
             ) {
-              console.log('AtÃ© mais! Obrigado por usar o frame-agent.');
+              console.log('Até mais! Obrigado por usar o frame-agent.');
               rl.close();
               return;
             }
@@ -171,7 +158,7 @@ export function createInteractiveCommand(): Command {
         showPrompt();
 
         rl.on('close', () => {
-          console.log('\nSessÃ£o encerrada. AtÃ© a prÃ³xima!');
+          console.log('\nSessão encerrada. Até a próxima!');
           process.exit(0);
         });
 

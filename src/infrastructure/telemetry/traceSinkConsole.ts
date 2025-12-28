@@ -14,10 +14,8 @@ export class ConsoleTraceSink implements TraceSink {
   emit(event: TraceEvent): void {
     const lines = formatTraceEventForTerminal(event, this.opts);
     for (const line of lines) {
-      // Escreve de forma SÍNCRONA diretamente no file descriptor
-      // Isso contorna o buffer do stream do Node.js
-      const buffer = Buffer.from(line + '\n', 'utf-8');
-      fs.writeSync(this.stdoutFd, buffer, 0, buffer.length, null);
+      // Usa process.stdout.write para melhor suporte a UTF-8
+      process.stdout.write(line + '\n');
     }
   }
 }

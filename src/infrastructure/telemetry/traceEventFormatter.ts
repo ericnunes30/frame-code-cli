@@ -16,6 +16,10 @@ function getAgentLabel(event: TraceEvent): string {
   const agentLabel = event.agent?.label;
   if (agentLabel && agentLabel.trim().length > 0) return agentLabel;
 
+  // Fallback para usar ID do agente se disponível
+  const agentId = event.agent?.id;
+  if (agentId && agentId.trim().length > 0) return `[${agentId}]`;
+
   return 'Agente';
 }
 

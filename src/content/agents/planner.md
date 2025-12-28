@@ -3,6 +3,7 @@ name: planner
 type: sub-agent
 description: Cria planos estruturados e acionáveis para tarefas complexas
 keywords: [planner, planning, plan, structure, breakdown]
+availableFor: [supervisor]
 tools: [search, file_read, list_capabilities, enable_capability, final_answer]
 temperature: 0.3
 maxTokens: 4096

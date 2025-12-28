@@ -66,6 +66,8 @@ export function parseAgentFile(filePath: string): IAgentMetadata | null {
 
                     if (key.trim() === 'subAgents' && arrayValue.length === 1 && arrayValue[0] === 'all') {
                         frontmatter[key.trim()] = 'all';
+                    } else if (key.trim() === 'availableFor' && arrayValue.length === 1 && arrayValue[0] === 'all') {
+                        frontmatter[key.trim()] = 'all';
                     } else {
                         frontmatter[key.trim()] = arrayValue;
                     }
@@ -107,6 +109,7 @@ export function parseAgentFile(filePath: string): IAgentMetadata | null {
             tools: frontmatter.tools || [],
             toolPolicy: frontmatter.toolPolicy,
             subAgents: frontmatter.subAgents,
+            availableFor: frontmatter.availableFor,
             model: frontmatter.model,
             temperature: frontmatter.temperature ? parseFloat(frontmatter.temperature) : undefined,
             maxTokens: frontmatter.maxTokens ? parseInt(frontmatter.maxTokens, 10) : undefined,
@@ -158,14 +161,32 @@ function discoverAgentsInDir(agentsDir: string): IAgentMetadata[] {
  * Descobre todos os arquivos de agentes (built-in + personalizados).
  *
  * Carrega agentes de dois locais:
- * 1. src/content/agents/ - Agentes built-in do code-cli
+ * 1. dist/content/agents/ ou src/content/agents/ - Agentes built-in do code-cli
  * 2. .code/agents/ - Agentes personalizados do projeto (permite sobrescrever)
  */
 export function discoverAgents(agentsDir?: string): IAgentMetadata[] {
     const agents: IAgentMetadata[] = [];
 
     // 1. Carregar agentes built-in primeiro
-    const builtinAgentsDir = path.join(__dirname, '../../content/agents');
+    // Em produção: dist/content/agents/, em dev: src/content/agents/
+    let builtinAgentsDir = path.join(__dirname, '../../content/agents');
+
+    // Se não existir (ex: npm link), tenta resolver pelo package.json
+    if (!fs.existsSync(builtinAgentsDir)) {
+        try {
+            const packagePath = require.resolve('frame-code-cli/package.json');
+            const packageDir = path.dirname(packagePath);
+            builtinAgentsDir = path.join(packageDir, 'dist', 'content', 'agents');
+            // Se ainda não existir, tenta sem dist/
+            if (!fs.existsSync(builtinAgentsDir)) {
+                builtinAgentsDir = path.join(packageDir, 'content', 'agents');
+            }
+        } catch {
+            // Usa o caminho relativo como fallback
+            builtinAgentsDir = path.join(__dirname, '../../content/agents');
+        }
+    }
+
     agents.push(...discoverAgentsInDir(builtinAgentsDir));
 
     // 2. Carregar agentes personalizados depois (permite sobrescrever)
@@ -196,11 +217,28 @@ function filterToolsByPolicy(allTools: ITool[], policy?: ToolPolicy): ITool[] {
 
 /**
  * Filtra subAgentes conforme configuração do agente.
+ *
+ * Modo bottom-up: quando supervisorName é fornecido, filtra baseado em availableFor de cada sub-agente.
+ * Modo top-down (fallback): quando supervisorName não é fornecido, usa subAgentsConfig.
  */
 function filterSubAgents(
     allSubAgents: IAgentMetadata[],
-    subAgentsConfig?: (string[] | 'all')
+    subAgentsConfig?: (string[] | 'all'),
+    supervisorName?: string
 ): IAgentMetadata[] {
+    // Modo bottom-up: filtrar por availableFor de cada sub-agente
+    if (supervisorName) {
+        return allSubAgents.filter(agent => {
+            // Não especificou availableFor = acessível a todos
+            if (!agent.availableFor) return true;
+            // Explicitamente 'all' = acessível a todos
+            if (agent.availableFor === 'all') return true;
+            // Verifica se supervisor está na lista
+            return agent.availableFor.includes(supervisorName);
+        });
+    }
+
+    // Fallback: modo top-down com subAgentsConfig (comportamento atual)
     if (!subAgentsConfig || (Array.isArray(subAgentsConfig) && subAgentsConfig.length === 0)) {
         return [];
     }
@@ -390,7 +428,11 @@ async function createAgentWithDefinition(
 
     const engine = new GraphEngine(
         graphDefinition,
-        telemetry ? { trace: telemetry.trace, telemetry: telemetry.telemetry } : undefined,
+        telemetry ? {
+            trace: telemetry.trace,
+            telemetry: telemetry.telemetry,
+            traceContext: { agent: { id: metadata.name, label: metadata.name } }
+        } : undefined,
         llmConfig
     );
 
@@ -425,6 +467,24 @@ export async function createAgentFromFlow(
         const compressionPrompt = compressionManager.getCompressionPrompt();
         if (compressionPrompt) {
             systemPrompt = compressionPrompt + '\n\n' + systemPrompt;
+        }
+    }
+
+    // Injetar lista de sub-agentes disponíveis no prompt do supervisor
+    if (metadata.type === 'main-agent' && metadata.canBeSupervisor) {
+        const registry = AgentRegistry.getInstance();
+        const allSubAgents = registry.listByType('sub-agent');
+        const allowedSubAgents = filterSubAgents(allSubAgents, metadata.subAgents, metadata.name);
+
+        if (allowedSubAgents.length > 0) {
+            const subAgentList = allowedSubAgents.map(agent =>
+                `- **${agent.name}**: ${agent.description}`
+            ).join('\n');
+
+            systemPrompt = systemPrompt + '\n\n## Sub-agentes Disponíveis\n\n' +
+                'Você pode chamar os seguintes sub-agentes via `call_flow`:\n\n' +
+                subAgentList + '\n\n' +
+                'Use `call_flow` com o `flowId` correspondente ao nome do sub-agente.';
         }
     }
 
@@ -466,7 +526,7 @@ export async function createAgentFromFlow(
     if (!_skipSubAgents && metadata.type === 'main-agent') {
         const registry = AgentRegistry.getInstance();
         const allSubAgents = registry.listByType('sub-agent');
-        const allowedSubAgents = filterSubAgents(allSubAgents, metadata.subAgents);
+        const allowedSubAgents = filterSubAgents(allSubAgents, metadata.subAgents, metadata.name);
 
         if (allowedSubAgents.length === 0 && metadata.tools.includes('call_flow')) {
             finalTools = selectedTools.filter((t: ITool) => t.name !== 'call_flow');
@@ -540,7 +600,11 @@ export async function createAgentFromFlow(
 
     const engine = new GraphEngine(
         graphDefinition,
-        telemetry ? { trace: telemetry.trace, telemetry: telemetry.telemetry } : undefined,
+        telemetry ? {
+            trace: telemetry.trace,
+            telemetry: telemetry.telemetry,
+            traceContext: { agent: { id: metadata.name, label: metadata.name } }
+        } : undefined,
         llmConfig
     );
 

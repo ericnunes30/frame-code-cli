@@ -53,6 +53,9 @@ export interface IAgentMetadata {
     /** Lista de sub-agentes que este agente pode chamar via call_flow */
     subAgents?: (string[] | 'all');
 
+    /** Lista de supervisores que podem usar este sub-agente via call_flow */
+    availableFor?: ('all' | string[]);
+
     /** Modelo LLM a usar (sobrescreve config global) */
     model?: string;
 
