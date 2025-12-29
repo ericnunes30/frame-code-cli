@@ -1,4 +1,4 @@
-import type { ContextHooks, IGraphState } from 'frame-agent-sdk';
+import type { ContextHooks, IGraphState } from '@ericnunes/frame-agent-sdk';
 import { logger } from '../../../infrastructure/logging/logger';
 import { CompressionManager } from '../../../infrastructure/compression';
 

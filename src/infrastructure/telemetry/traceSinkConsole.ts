@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import type { TraceEvent, TraceSink } from 'frame-agent-sdk';
+import type { TraceEvent, TraceSink } from '@ericnunes/frame-agent-sdk';
 import { formatTraceEventForTerminal, type TraceFormatOptions } from './traceEventFormatter';
 
 export class ConsoleTraceSink implements TraceSink {

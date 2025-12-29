@@ -1,4 +1,4 @@
-import type { GraphEngine, ContentPart } from 'frame-agent-sdk';
+import type { GraphEngine, ContentPart } from '@ericnunes/frame-agent-sdk';
 import * as path from 'path';
 import { buildMultimodalContent, readFileAsDataUrl, type ImageDetail } from './imageInput';
 

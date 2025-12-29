@@ -1,4 +1,4 @@
-import { ToolBase } from 'frame-agent-sdk';
+import { ToolBase } from '@ericnunes/frame-agent-sdk';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 

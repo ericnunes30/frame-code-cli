@@ -21,7 +21,7 @@ import {
     type GraphDefinition,
     type ITool,
     type TelemetryOptions
-} from 'frame-agent-sdk';
+} from '@ericnunes/frame-agent-sdk';
 
 import { REACT_AGENT_FLOW } from '../flows/templates/ReactAgentFlow';
 import type { IAgentMetadata, ToolPolicy } from './interfaces/agentMetadata.interface';

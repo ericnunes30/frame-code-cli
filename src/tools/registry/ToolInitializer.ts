@@ -1,4 +1,4 @@
-import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, CallFlowTool, FlowRegistryImpl, FlowRunnerImpl, ITool } from 'frame-agent-sdk';
+import { toolRegistry, AskUserTool, FinalAnswerTool, ApprovalTool, CallFlowTool, FlowRegistryImpl, FlowRunnerImpl, ITool } from '@ericnunes/frame-agent-sdk';
 import {
   searchTool,
   fileCreateTool,

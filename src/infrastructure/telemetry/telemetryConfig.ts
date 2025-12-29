@@ -1,5 +1,5 @@
-import type { TelemetryOptions, TraceSink } from 'frame-agent-sdk';
-import { MultiplexTraceSink } from 'frame-agent-sdk';
+import type { TelemetryOptions, TraceSink } from '@ericnunes/frame-agent-sdk';
+import { MultiplexTraceSink } from '@ericnunes/frame-agent-sdk';
 import { ConsoleTraceSink } from './traceSinkConsole';
 
 function readBool(value: string | undefined, defaultValue: boolean): boolean {

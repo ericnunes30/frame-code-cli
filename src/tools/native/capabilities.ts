@@ -1,4 +1,4 @@
-import { ToolBase, IToolParams } from 'frame-agent-sdk';
+import { ToolBase, IToolParams } from '@ericnunes/frame-agent-sdk';
 import { SkillLoader } from '../../infrastructure/skills';
 import { McpLoader } from '../mcp';
 import { discoverMcpTools, IMcpToolInfo } from '../mcp';

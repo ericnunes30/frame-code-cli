@@ -1,4 +1,4 @@
-import type { GraphDefinition, GraphNode } from 'frame-agent-sdk';
+import type { GraphDefinition, GraphNode } from '@ericnunes/frame-agent-sdk';
 
 function envTruthy(value: string | undefined): boolean {
   if (!value) return false;

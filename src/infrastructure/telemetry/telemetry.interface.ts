@@ -1,4 +1,4 @@
-import type { TelemetryOptions } from 'frame-agent-sdk';
+import type { TelemetryOptions } from '@ericnunes/frame-agent-sdk';
 
 /**
  * Interface para sistema de telemetria.

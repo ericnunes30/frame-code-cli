@@ -1,4 +1,4 @@
-import { MCPBase, toolRegistry } from 'frame-agent-sdk';
+import { MCPBase, toolRegistry } from '@ericnunes/frame-agent-sdk';
 import { logger } from '../../infrastructure/logging/logger';
 import { McpLoader, IMcpMetadata } from './loader';
 
