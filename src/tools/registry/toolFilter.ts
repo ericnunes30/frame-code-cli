@@ -1,4 +1,4 @@
-import { ITool } from 'frame-agent-sdk';
+import { ITool } from '@ericnunes/frame-agent-sdk';
 
 /**
  * Interface para configuração do filtro de ferramentas

@@ -1,4 +1,4 @@
-import type { TraceEvent } from 'frame-agent-sdk';
+import type { TraceEvent } from '@ericnunes/frame-agent-sdk';
 
 export type TraceFormatOptions = {
   verbose?: boolean;

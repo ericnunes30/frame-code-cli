@@ -1,4 +1,4 @@
-import { ToolBase, IToolParams } from 'frame-agent-sdk';
+import { ToolBase, IToolParams } from '@ericnunes/frame-agent-sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parse } from '@typescript-eslint/typescript-estree';

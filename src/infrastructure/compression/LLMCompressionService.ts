@@ -1,4 +1,4 @@
-import { AgentLLMConfig } from 'frame-agent-sdk';
+import { AgentLLMConfig } from '@ericnunes/frame-agent-sdk';
 import { logger } from '../logging/logger';
 import { loadConfig, loadConfigSync } from '../config';
 

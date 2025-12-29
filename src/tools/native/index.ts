@@ -6,7 +6,7 @@ import {
   TerminalTool,
   SearchTool,
   ToDoIstTool
-} from 'frame-agent-sdk';
+} from '@ericnunes/frame-agent-sdk';
 
 // Re-exportar tools para compatibilidade
 export const fileReadTool = FileReadTool;

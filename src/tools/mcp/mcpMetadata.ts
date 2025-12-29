@@ -1,4 +1,4 @@
-import { MCPBaseConfig } from 'frame-agent-sdk';
+import { MCPBaseConfig } from '@ericnunes/frame-agent-sdk';
 
 /**
  * Metadata para controle de registro e visibilidade de MCPs

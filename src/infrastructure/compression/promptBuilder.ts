@@ -1,5 +1,5 @@
-import { PromptBuilder } from 'frame-agent-sdk';
-import type { AgentInfo, PromptMode, ToolSchema } from 'frame-agent-sdk';
+import { PromptBuilder } from '@ericnunes/frame-agent-sdk';
+import type { AgentInfo, PromptMode, ToolSchema } from '@ericnunes/frame-agent-sdk';
 
 import { logger } from '../logging/logger';
 

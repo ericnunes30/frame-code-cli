@@ -1,5 +1,5 @@
-import { ToolBase } from 'frame-agent-sdk';
-import type { ReadImageParams } from 'frame-agent-sdk';
+import { ToolBase } from '@ericnunes/frame-agent-sdk';
+import type { ReadImageParams } from '@ericnunes/frame-agent-sdk';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';

@@ -19,7 +19,7 @@ import {
     createToolDetectionNode,
     createToolExecutorNode,
     GraphStatus
-} from 'frame-agent-sdk';
+} from '@ericnunes/frame-agent-sdk';
 
 /**
  * Template de grafo ReAct padrão para todos os agentes.
@@ -36,7 +36,7 @@ import {
  * @example
  * ```typescript
  * import { REACT_AGENT_FLOW } from './agentFlow';
- * import { createAgentNode } from 'frame-agent-sdk';
+ * import { createAgentNode } from '@ericnunes/frame-agent-sdk';
  *
  * const graphDefinition = {
  *     ...REACT_AGENT_FLOW,

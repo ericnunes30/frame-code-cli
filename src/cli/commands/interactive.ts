@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as readline from 'readline';
 import { logger } from '../../infrastructure/logging/logger';
-import { GraphStatus } from 'frame-agent-sdk';
+import { GraphStatus } from '@ericnunes/frame-agent-sdk';
 import { initializeTools } from '../../tools';
 import { loadConfig } from '../../infrastructure/config';
 import { createCliTelemetry } from '../../infrastructure/telemetry';

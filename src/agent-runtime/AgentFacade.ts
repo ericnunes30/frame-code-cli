@@ -1,4 +1,4 @@
-import type { GraphEngine } from 'frame-agent-sdk';
+import type { GraphEngine } from '@ericnunes/frame-agent-sdk';
 import type { IAgentMetadata, IAgentMetadataSummary } from './registry/interfaces/agentMetadata.interface';
 import type { IAgentRegistry } from './registry/interfaces/agentRegistry.interface';
 import type { ITelemetry } from '../infrastructure/telemetry/telemetry.interface';

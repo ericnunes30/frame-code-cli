@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { MCPBase } from 'frame-agent-sdk';
+import { MCPBase } from '@ericnunes/frame-agent-sdk';
 import { McpConfigWithMetadata } from '../../tools/mcp/mcpMetadata';
 import { McpJsonConfig, McpJsonEntry } from './mcpConfig.interface';
 import { logger } from '../../infrastructure/logging/logger';

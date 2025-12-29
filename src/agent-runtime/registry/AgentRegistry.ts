@@ -11,8 +11,8 @@
 
 import { discoverAgents, createAgentFromFlow } from './agentParser';
 import type { IAgentMetadata, IAgentMetadataSummary, IAgentRegistrationResult } from './interfaces/agentMetadata.interface';
-import type { TelemetryOptions } from 'frame-agent-sdk';
-import { GraphEngine } from 'frame-agent-sdk';
+import type { TelemetryOptions } from '@ericnunes/frame-agent-sdk';
+import { GraphEngine } from '@ericnunes/frame-agent-sdk';
 import { logger } from '../../infrastructure/logging/logger';
 
 /**

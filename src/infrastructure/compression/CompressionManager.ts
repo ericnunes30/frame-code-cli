@@ -1,7 +1,7 @@
-import type { IGraphState } from 'frame-agent-sdk';
-import { ChatHistoryManager, TokenizerService } from 'frame-agent-sdk';
-import type { Message } from 'frame-agent-sdk';
-import { extractTextFromMessage } from 'frame-agent-sdk';
+import type { IGraphState } from '@ericnunes/frame-agent-sdk';
+import { ChatHistoryManager, TokenizerService } from '@ericnunes/frame-agent-sdk';
+import type { Message } from '@ericnunes/frame-agent-sdk';
+import { extractTextFromMessage } from '@ericnunes/frame-agent-sdk';
 import { LLMCompressionService } from './LLMCompressionService';
 import { logger } from '../logging/logger';
 import { loadConfig, loadConfigSync } from '../config';
