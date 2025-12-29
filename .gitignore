@@ -72,6 +72,8 @@ docs/*
 todoist-express/
 plans/
 
+.code/
+
 .code/skills/github-list-issues
 
 # external/ - temporariamente removido para versionar manager-group
