@@ -71,6 +71,12 @@ export interface IAgentMetadata {
     /** Prompt do sistema (corpo do markdown) */
     systemPrompt: string;
 
+    /** Backstory do agente (seção # Agent Identity) - opcional no frontmatter */
+    backstory?: string;
+
+    /** Instruções adicionais do agente (seção ## Prompt Instructions) - opcional no frontmatter */
+    additionalInstructions?: string;
+
     /** Caminho completo do arquivo .md */
     path: string;
 

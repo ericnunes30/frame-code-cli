@@ -37,6 +37,7 @@ import { McpLoader } from '../../tools/mcp/loader';
 
 /**
  * Parseia arquivo .md do agente e retorna IAgentMetadata.
+ * Suporta valores multiline no YAML frontmatter usando o formato '|'.
  */
 export function parseAgentFile(filePath: string): IAgentMetadata | null {
     try {
@@ -54,9 +55,53 @@ export function parseAgentFile(filePath: string): IAgentMetadata | null {
         for (; i < lines.length; i++) {
             if (lines[i].trim() === '---') break;
 
-            const [key, ...valueParts] = lines[i].split(':');
-            if (key && valueParts.length > 0) {
-                const value = valueParts.join(':').trim();
+            const colonIndex = lines[i].indexOf(':');
+            if (colonIndex === -1) continue;
+
+            const key = lines[i].substring(0, colonIndex).trim();
+            const valuePart = lines[i].substring(colonIndex + 1).trim();
+
+            // Verificar se é um valor multiline (começa com |)
+            if (valuePart === '|' || valuePart.startsWith('| ')) {
+                // Valor multiline - ler linhas até a próxima chave ou fim do frontmatter
+                const multilineLines: string[] = [];
+                i++; // pular a linha com o |
+
+                // Determinar a indentação baseada na primeira linha de conteúdo
+                let baseIndent = 0;
+                while (i < lines.length && lines[i].trim() !== '---') {
+                    const line = lines[i];
+                    // Se a linha começa com um novo campo (chave: valor), pare
+                    if (line.match(/^\s*[a-zA-Z_]+:/)) {
+                        break;
+                    }
+                    // Se linha está vazia, apenas continue
+                    if (line.trim() === '') {
+                        multilineLines.push('');
+                        i++;
+                        continue;
+                    }
+                    // Calcular indentação da primeira linha não vazia
+                    if (baseIndent === 0 && line.trim() !== '') {
+                        const match = line.match(/^(\s+)/);
+                        baseIndent = match ? match[1].length : 0;
+                    }
+                    // Remover indentação base e adicionar linha
+                    if (line.length >= baseIndent) {
+                        multilineLines.push(line.substring(baseIndent));
+                    }
+                    i++;
+                }
+                i--; // voltar uma linha porque o loop vai incrementar
+
+                // Unir linhas com \n
+                frontmatter[key] = multilineLines.join('\n');
+                continue;
+            }
+
+            // Valores regulares (não multiline)
+            if (key && valuePart.length > 0) {
+                const value = valuePart;
 
                 if (value.startsWith('[') && value.endsWith(']')) {
                     const arrayValue = value
@@ -64,22 +109,22 @@ export function parseAgentFile(filePath: string): IAgentMetadata | null {
                         .split(',')
                         .map((s: string) => s.trim().replace(/^['"]|['"]$/g, ''));
 
-                    if (key.trim() === 'subAgents' && arrayValue.length === 1 && arrayValue[0] === 'all') {
-                        frontmatter[key.trim()] = 'all';
-                    } else if (key.trim() === 'availableFor' && arrayValue.length === 1 && arrayValue[0] === 'all') {
-                        frontmatter[key.trim()] = 'all';
+                    if (key === 'subAgents' && arrayValue.length === 1 && arrayValue[0] === 'all') {
+                        frontmatter[key] = 'all';
+                    } else if (key === 'availableFor' && arrayValue.length === 1 && arrayValue[0] === 'all') {
+                        frontmatter[key] = 'all';
                     } else {
-                        frontmatter[key.trim()] = arrayValue;
+                        frontmatter[key] = arrayValue;
                     }
                 } else {
                     if (value === 'true') {
-                        frontmatter[key.trim()] = true;
+                        frontmatter[key] = true;
                     } else if (value === 'false') {
-                        frontmatter[key.trim()] = false;
-                    } else if (value === 'all' && key.trim() === 'subAgents') {
-                        frontmatter[key.trim()] = 'all';
+                        frontmatter[key] = false;
+                    } else if (value === 'all' && key === 'subAgents') {
+                        frontmatter[key] = 'all';
                     } else {
-                        frontmatter[key.trim()] = value.replace(/^['"]|['"]$/g, '');
+                        frontmatter[key] = value.replace(/^['"]|['"]$/g, '');
                     }
                 }
             }
@@ -115,6 +160,8 @@ export function parseAgentFile(filePath: string): IAgentMetadata | null {
             maxTokens: frontmatter.maxTokens ? parseInt(frontmatter.maxTokens, 10) : undefined,
             systemPromptPath: frontmatter.systemPrompt,
             systemPrompt: body,
+            backstory: frontmatter.backstory,
+            additionalInstructions: frontmatter.additionalInstructions,
             path: filePath,
             category,
             compressionEnabled: frontmatter.compressionEnabled !== undefined
@@ -404,9 +451,9 @@ async function createAgentWithDefinition(
             agentInfo: {
                 name: metadata.name,
                 goal: metadata.description,
-                backstory: systemPrompt.substring(0, 500)
+                backstory: metadata.backstory || systemPrompt.substring(0, 500)
             },
-            additionalInstructions: systemPrompt,
+            additionalInstructions: metadata.additionalInstructions || systemPrompt,
             tools: finalTools,
             toolPolicy: metadata.toolPolicy
         },
@@ -575,9 +622,9 @@ export async function createAgentFromFlow(
             agentInfo: {
                 name: metadata.name,
                 goal: metadata.description,
-                backstory: systemPrompt.substring(0, 500)
+                backstory: metadata.backstory || systemPrompt.substring(0, 500)
             },
-            additionalInstructions: systemPrompt,
+            additionalInstructions: metadata.additionalInstructions || systemPrompt,
             tools: finalTools,
             toolPolicy: metadata.toolPolicy
         },
