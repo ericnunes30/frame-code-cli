@@ -5,7 +5,8 @@ import {
   FileCreateTool,
   TerminalTool,
   SearchTool,
-  ToDoIstTool
+  ToDoIstTool,
+  SleepTool
 } from '@ericnunes/frame-agent-sdk';
 
 // Re-exportar tools para compatibilidade
@@ -15,6 +16,7 @@ export const terminalTool = TerminalTool;
 export const searchTool = SearchTool;
 export const fileCreateTool = FileCreateTool;
 export const toDoIstTool = new ToDoIstTool();
+export const sleepTool = SleepTool;
 
 // Tools locais (não migradas)
 export { fileOutlineTool } from './file-outline';

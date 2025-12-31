@@ -20,6 +20,8 @@ package-lock.json
 tmp/
 temp/
 
+external/
+
 # OS
 .DS_Store
 Thumbs.db

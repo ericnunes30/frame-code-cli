@@ -4,7 +4,7 @@ type: main-agent
 canBeSupervisor: false
 description: Engenheiro de Software Sênior Autônomo (Full-Stack Solo)
 keywords: [code, development, software, files, edit, refactoring, architecture, testing]
-tools: [search, file_read, file_write, file_edit, list_directory, toDoIst, terminal, list_capabilities, enable_capability, final_answer]
+tools: [toDoIst, terminal, file_read, file_create, file_edit, list_directory, search, list_capabilities, enable_capability, sleep, final_answer]
 temperature: 0.3
 maxTokens: 4096
 compressionEnabled: true

@@ -10,7 +10,8 @@ import {
   listCapabilitiesTool,
   enableCapabilityTool,
   listDirectoryTool,
-  readImageTool
+  readImageTool,
+  sleepTool
 } from '../native';
 import { registerMcpTools } from '../mcp/register';
 import { logger } from '../../infrastructure/logging/logger';
@@ -48,6 +49,7 @@ export async function initializeTools(options?: { allowAskUser?: boolean }): Pro
     fileEditTool,
     fileReadTool,
     terminalTool,
+    sleepTool,
     fileOutlineTool,
     listCapabilitiesTool,
     enableCapabilityTool,
