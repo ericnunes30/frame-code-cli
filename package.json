@@ -1,7 +1,7 @@
 {
-  "name": "frame-code-cli",
+  "name": "@ericnunes/frame-code-cli",
   "version": "0.0.1",
-  "description": "CLI para interagir com agentes de IA usando o frame-agent-sdk",
+  "description": "CLI para interagir com agentes de codificação criados com o frame-agent-sdk",
   "main": "dist/index.js",
   "bin": {
     "frame-code": "dist/index.js"
@@ -14,6 +14,14 @@
     "url": "https://github.com/ericnunes/frame-code-cli/issues"
   },
   "homepage": "https://github.com/ericnunes/frame-code-cli#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc && npm run copy:agents",
     "copy:agents": "npx cpy \"src/content/agents/*.md\" \"dist/content/agents\"",
@@ -37,9 +45,9 @@
     "framework"
   ],
   "author": "Eric Nunes",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
-    "@ericnunes/frame-agent-sdk": "file:../frame-agent-sdk",
+    "@ericnunes/frame-agent-sdk": "^0.0.3",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "@typescript-eslint/typescript-estree": "^8.48.0",
     "chalk": "^5.6.2",

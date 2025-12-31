@@ -1,0 +1,139 @@
+PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2025 Eric Nunes. All rights reserved.
+
+================================================================================
+FRAME CODE CLI - LICENÇA DE USO RESTRITO
+================================================================================
+
+IMPORTANTE: LEIA ATENTAMENTE ANTES DE USAR ESTE SOFTWARE
+
+Este software e a documentação associada (coletivamente, o "Software") são
+propriedade exclusiva de Eric Nunes ("Proprietário") e estão
+protegidos por leis de direitos autorais e tratados internacionais.
+
+================================================================================
+1. CONCESSÃO DE LICENÇA
+================================================================================
+
+Sujeito aos termos e condições desta Licença, o Proprietário concede a você
+uma licença limitada, não exclusiva, intransferível e revogável para:
+
+  a) USO INTERNO: Usar o Software internamente dentro de sua organização para
+     fins de desenvolvimento, teste e operação de sistemas internos.
+
+  b) USO PESSOAL: Usar o Software para fins pessoais, educacionais e de
+     pesquisa não-comercial.
+
+  c) MODIFICAÇÃO: Modificar o Software para uso interno ou pessoal, desde que
+     as modificações permaneçam sob os termos desta Licença.
+
+================================================================================
+2. RESTRIÇÕES
+================================================================================
+
+Você NÃO PODE, sob nenhuma circunstância:
+
+  a) COMERCIALIZAÇÃO: Vender, licenciar, sublicenciar, alugar, arrendar ou
+     de qualquer forma comercializar o Software ou qualquer produto derivado
+     dele.
+
+  b) REDISTRIBUIÇÃO: Distribuir, publicar, transferir ou disponibilizar o
+     Software ou qualquer parte dele a terceiros, exceto conforme expressamente
+     permitido nesta Licença.
+
+  c) PRODUTOS COMERCIAIS: Usar o Software como base para criar, desenvolver ou
+     distribuir produtos ou serviços comerciais.
+
+  d) REMOÇÃO DE AVISOS: Remover, alterar ou obscurecer quaisquer avisos de
+     direitos autorais, marcas registradas ou outros avisos de propriedade
+     contidos no Software.
+
+  e) ENGENHARIA REVERSA: Fazer engenharia reversa, descompilar ou desmontar
+     o Software, exceto na medida expressamente permitida pela lei aplicável.
+
+================================================================================
+3. PROPRIEDADE INTELECTUAL
+================================================================================
+
+O Software é licenciado, não vendido. O Proprietário retém todos os direitos,
+títulos e interesses no Software, incluindo todos os direitos de propriedade
+intelectual. Esta Licença não concede a você nenhum direito sobre marcas
+registradas ou marcas de serviço do Proprietário.
+
+================================================================================
+4. ISENÇÃO DE GARANTIAS
+================================================================================
+
+O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIAS DE
+QUALQUER TIPO, EXPRESSAS OU IMPLÍCITAS, INCLUINDO, MAS NÃO SE LIMITANDO A,
+GARANTIAS DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO E
+NÃO VIOLAÇÃO.
+
+O Proprietário não garante que o Software:
+  - Atenderá aos seus requisitos
+  - Operará de forma ininterrupta ou livre de erros
+  - Será compatível com outros softwares ou hardwares
+  - Será seguro ou livre de vulnerabilidades
+
+================================================================================
+5. LIMITAÇÃO DE RESPONSABILIDADE
+================================================================================
+
+EM NENHUMA CIRCUNSTÂNCIA O PROPRIETÁRIO SERÁ RESPONSÁVEL POR QUAISQUER DANOS
+DIRETOS, INDIRETOS, INCIDENTAIS, ESPECIAIS, EXEMPLARES OU CONSEQUENCIAIS
+(INCLUINDO, MAS NÃO SE LIMITANDO A, AQUISIÇÃO DE BENS OU SERVIÇOS
+SUBSTITUTOS; PERDA DE USO, DADOS OU LUCROS; OU INTERRUPÇÃO DE NEGÓCIOS)
+DECORRENTES DO USO OU INCAPACIDADE DE USAR O SOFTWARE, MESMO QUE O
+PROPRIETÁRIO TENHA SIDO AVISADO DA POSSIBILIDADE DE TAIS DANOS.
+
+================================================================================
+6. RESCISÃO
+================================================================================
+
+Esta Licença é efetiva até ser rescindida. Seus direitos sob esta Licença
+serão automaticamente rescindidos sem aviso do Proprietário se você não
+cumprir qualquer termo desta Licença.
+
+Após a rescisão, você deve:
+  - Cessar imediatamente todo uso do Software
+  - Destruir todas as cópias do Software em sua posse ou controle
+
+================================================================================
+7. DISPOSIÇÕES GERAIS
+================================================================================
+
+  a) LEI APLICÁVEL: Esta Licença será regida e interpretada de acordo com as
+     leis do Brasil, sem considerar seus conflitos de disposições legais.
+
+  b) INTEGRALIDADE: Esta Licença constitui o acordo completo entre você e o
+     Proprietário em relação ao Software e substitui todos os acordos
+     anteriores ou contemporâneos.
+
+  c) MODIFICAÇÕES: O Proprietário reserva-se o direito de modificar esta
+     Licença a qualquer momento. O uso continuado do Software após tais
+     modificações constitui sua aceitação da Licença modificada.
+
+  d) DIVISIBILIDADE: Se qualquer disposição desta Licença for considerada
+     inválida ou inexequível, as disposições restantes permanecerão em pleno
+     vigor e efeito.
+
+================================================================================
+8. CONTATO
+================================================================================
+
+Para questões sobre esta Licença ou para solicitar permissões adicionais,
+entre em contato:
+
+  Eric Nunes
+  GitHub: https://github.com/ericnunes/frame-code-cli
+  Issues: https://github.com/ericnunes/frame-code-cli/issues
+
+================================================================================
+
+AO USAR ESTE SOFTWARE, VOCÊ RECONHECE QUE LEU ESTA LICENÇA, COMPREENDEU-A
+E CONCORDA EM ESTAR VINCULADO POR SEUS TERMOS E CONDIÇÕES.
+
+SE VOCÊ NÃO CONCORDAR COM ESTES TERMOS, NÃO USE O SOFTWARE.
+
+================================================================================
