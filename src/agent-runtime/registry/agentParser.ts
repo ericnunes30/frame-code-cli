@@ -32,6 +32,7 @@ import { loadAgentConfig } from '../../infrastructure/config/agentConfig';
 import { CompressionManager } from '../../infrastructure/compression';
 import { createCliContextHooks } from '../context/hooks/compressionHook';
 import { loadSystemPrompt } from '../context/system-prompts/loader';
+import { loadProjectRules } from '../context/project-rules/loader';
 import { logger } from '../../infrastructure/logging/logger';
 import { McpLoader } from '../../tools/mcp/loader';
 
@@ -168,7 +169,8 @@ export function parseAgentFile(filePath: string): IAgentMetadata | null {
                 ? frontmatter.compressionEnabled === true || frontmatter.compressionEnabled === 'true'
                 : undefined,
             customErrorHandling: frontmatter.customErrorHandling === true || frontmatter.customErrorHandling === 'true',
-            flowMode: frontmatter.flowMode
+            flowMode: frontmatter.flowMode,
+            useProjectRules: frontmatter.useProjectRules !== false // default: true
         };
 
         return metadata;
@@ -399,6 +401,23 @@ async function createAgentWithDefinition(
         }
     }
 
+    // Carregar regras do projeto
+    const projectRules = loadProjectRules.load();
+
+    // Injetar AGENTS.md ABAIXO do systemPrompt com título "## Rules Project"
+    if (metadata.useProjectRules !== false && projectRules.content && projectRules.source !== 'none') {
+        const rulesSection = `## Rules Project\n\n${projectRules.content}\n\n---\n\n`;
+        systemPrompt = systemPrompt + rulesSection;
+    }
+
+    // Injetar instrução adicional sobre verificar AGENTS.md/CLAUDE.md em diretórios
+    if (metadata.useProjectRules !== false) {
+        const directoryInstruction = `### Instrução Adicional\n\n` +
+            `Arquivo AGENTS.md ou CLAUDE.md são arquivos que contêm regras e contexto do projeto. ` +
+            `Cada diretório que você acessar, verifique se possui AGENTS.md ou CLAUDE.md para colher contexto.\n\n`;
+        systemPrompt = systemPrompt + directoryInstruction;
+    }
+
     const agentConfig = loadAgentConfig(metadata.name);
     // supportsVision: config.json agente > config.json defaults > ENV global > hardcoded
     const supportsVision = agentConfig.capabilities?.supportsVision
@@ -515,6 +534,23 @@ export async function createAgentFromFlow(
         if (compressionPrompt) {
             systemPrompt = compressionPrompt + '\n\n' + systemPrompt;
         }
+    }
+
+    // Carregar regras do projeto
+    const projectRules = loadProjectRules.load();
+
+    // Injetar AGENTS.md ABAIXO do systemPrompt com título "## Rules Project"
+    if (metadata.useProjectRules !== false && projectRules.content && projectRules.source !== 'none') {
+        const rulesSection = `## Rules Project\n\n${projectRules.content}\n\n---\n\n`;
+        systemPrompt = systemPrompt + rulesSection;
+    }
+
+    // Injetar instrução adicional sobre verificar AGENTS.md/CLAUDE.md em diretórios
+    if (metadata.useProjectRules !== false) {
+        const directoryInstruction = `### Instrução Adicional\n\n` +
+            `Arquivo AGENTS.md ou CLAUDE.md são arquivos que contêm regras e contexto do projeto. ` +
+            `Cada diretório que você acessar, verifique se possui AGENTS.md ou CLAUDE.md para colher contexto.\n\n`;
+        systemPrompt = systemPrompt + directoryInstruction;
     }
 
     // Injetar lista de sub-agentes disponíveis no prompt do supervisor

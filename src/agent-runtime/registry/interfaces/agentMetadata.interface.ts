@@ -91,6 +91,9 @@ export interface IAgentMetadata {
 
     /** Modo de fluxo para agentes (ex: hierarchical para supervisores) */
     flowMode?: string;
+
+    /** Indica se o agente deve usar regras do projeto AGENTS.md (default: true) */
+    useProjectRules?: boolean;
 }
 
 /**

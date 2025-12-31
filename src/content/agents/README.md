@@ -60,6 +60,122 @@ npm run interactive
 | `maxTokens` | number | Não | Máximo de tokens (default: da config) |
 | `systemPrompt` | string | Não | Arquivo .md com prompt base |
 | `compressionEnabled` | boolean | Não | Habilita compressão (default: true) |
+| `useProjectRules` | boolean | Não | Usa regras do projeto AGENTS.md (default: true) |
+
+## Regras do Projeto (AGENTS.md)
+
+O arquivo `AGENTS.md` contém regras que se aplicam a TODOS os agentes ao trabalhar no projeto atual.
+
+### Localizações
+
+- **Prioridade 1**: `.code/AGENTS.md` - Regras no diretório .code/
+- **Prioridade 2**: `AGENTS.md` - Regras na raiz do projeto
+
+### Como Criar Regras do Projeto
+
+```bash
+# Opção 1: Criar em .code/
+mkdir -p .code
+cat > .code/AGENTS.md << 'EOF'
+# Regras do Meu Projeto
+
+## Minhas Regras
+
+1. Sempre usar TypeScript strict mode
+2. Nunca usar any
+3. ...
+EOF
+
+# Opção 2: Criar na raiz
+cat > AGENTS.md << 'EOF'
+# Regras do Meu Projeto
+
+## Minhas Regras
+
+1. Sempre usar TypeScript strict mode
+2. Nunca usar any
+3. ...
+EOF
+```
+
+### Prioridade de Aplicação
+
+O prompt final do agente é construído nesta ordem:
+
+```
+1. compressionPrompt (se habilitado)
+2. systemPrompt (corpo do .md do agente)
+3. systemPromptPath (arquivo externo se especificado)
+4. ## Rules Project (AGENTS.md do projeto) ← NOVO
+5. ### Instrução Adicional (verificar AGENTS.md/CLAUDE.md em diretórios) ← NOVO
+6. additionalInstructions (do frontmatter)
+```
+
+### Instruções Automáticas para Diretórios
+
+O sistema adiciona automaticamente uma instrução que diz ao agente:
+
+> "Arquivo AGENTS.md ou CLAUDE.md são arquivos que contêm regras e contexto do projeto. Cada diretório que você acessar, verifique se possui AGENTS.md ou CLAUDE.md para colher contexto."
+
+Isso significa que o agente automaticamente buscará contexto de regras em cada subdiretório que acessar.
+
+### Desabilitar Regras do Projeto
+
+Para desabilitar regras do projeto para um agente específico:
+
+```yaml
+---
+name: meu-agente
+type: main-agent
+useProjectRules: false
+---
+```
+
+### Exemplo de Uso
+
+```
+Prompt Final do Agente:
+┌─────────────────────────────────────┐
+│ 1. compressionPrompt (opcional)     │
+├─────────────────────────────────────┤
+│ 2. systemPrompt (do .md)            │
+│    - Instruções específicas         │
+├─────────────────────────────────────┤
+│ 3. systemPromptPath (opcional)       │
+├─────────────────────────────────────┤
+│ 4. ## Rules Project                 │
+│    - Padrões de código              │
+│    - Tratamento de erros            │
+│    - Regras do projeto              │
+├─────────────────────────────────────┤
+│ 5. ### Instrução Adicional           │
+│    - Verificar AGENTS.md/CLAUDE.md  │
+│      em cada diretório              │
+├─────────────────────────────────────┤
+│ 6. additionalInstructions          │
+└─────────────────────────────────────┘
+```
+
+### Regras em Subdiretórios
+
+Além do AGENTS.md principal, o agente verificará automaticamente por AGENTS.md ou CLAUDE.md em cada subdiretório que acessar. Isso permite ter regras específicas para diferentes partes do projeto.
+
+**Exemplo de estrutura:**
+
+```
+projeto/
+├── AGENTS.md              # Regras globais do projeto
+├── src/
+│   ├── AGENTS.md          # Regras específicas para src/
+│   ├── components/
+│   │   └── AGENTS.md      # Regras específicas para components/
+│   └── utils/
+│       └── CLAUDE.md      # Regras específicas para utils/
+└── tests/
+    └── AGENTS.md          # Regras específicas para tests/
+```
+
+Quando o agente acessar `src/components/`, ele automaticamente carregará e considerará as regras de `AGENTS.md` nesse diretório.
 
 ## Exemplos
 
