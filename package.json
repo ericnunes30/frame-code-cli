@@ -1,6 +1,6 @@
 {
   "name": "@ericnunes/frame-code-cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "CLI para interagir com agentes de codificação criados com o frame-agent-sdk",
   "main": "dist/index.js",
   "bin": {
